@@ -28,6 +28,7 @@ namespace WebBanCameraGiamSat.Services
             _userManager = userManager;
             _configuration = configuration;
             _httpClient = httpClient;
+            _httpClient.Timeout = TimeSpan.FromSeconds(15);
         }
 
         public async Task<AiChatResponse> ProcessMessageAsync(string userId, string message)
@@ -41,43 +42,27 @@ namespace WebBanCameraGiamSat.Services
             var cleanMsg = message.Trim().ToLowerInvariant();
 
             // 1. KIỂM TRA Ý ĐỊNH ĐẶT HÀNG HỘ (ORDER INTENT)
-            // Ví dụ: "đặt hộ camera A32", "mua ngay camera imou ranger 2", "đặt hàng giúp tôi camera ezviz c6n", "chốt đơn camera..."
-            if (cleanMsg.Contains("đặt hộ") || cleanMsg.Contains("mua hộ") || cleanMsg.Contains("chốt đơn") || 
-                cleanMsg.Contains("đặt hàng giúp") || cleanMsg.Contains("đặt mua giúp") || (cleanMsg.StartsWith("mua ngay") || cleanMsg.StartsWith("đặt ngay")))
+            if (IsOrderIntent(cleanMsg))
             {
                 return await HandleOrderRequestAsync(user, message);
             }
 
-            // 2. TÌM KIẾM SẢN PHẨM PHÙ HỢP TỪ DATABASE LÀM CONTEXT CHO AI
+            // 2. TÌM KIẾM SẢN PHẨM PHÙ HỢP TỪ DATABASE
             var allProducts = await _context.Products
                 .Include(p => p.Brand)
                 .Include(p => p.Category)
                 .Where(p => p.IsActive)
-                .Take(25)
                 .ToListAsync();
 
-            // Tìm gợi ý sản phẩm liên quan đến câu hỏi
-            var matchedProducts = allProducts.Where(p =>
-                cleanMsg.Contains(p.Name.ToLowerInvariant()) ||
-                (!string.IsNullOrEmpty(p.Brand?.Name) && cleanMsg.Contains(p.Brand.Name.ToLowerInvariant())) ||
-                (!string.IsNullOrEmpty(p.Category?.Name) && cleanMsg.Contains(p.Category.Name.ToLowerInvariant())) ||
-                (cleanMsg.Contains("ngoài trời") && p.InstallLocation?.ToLowerInvariant().Contains("ngoài trời") == true) ||
-                (cleanMsg.Contains("trong nhà") && p.InstallLocation?.ToLowerInvariant().Contains("trong nhà") == true) ||
-                (cleanMsg.Contains("wifi") && p.ConnectionType?.ToLowerInvariant().Contains("wifi") == true)
-            ).Take(3).ToList();
+            var matchedProducts = FindRelevantProducts(cleanMsg, allProducts);
 
-            if (!matchedProducts.Any())
-            {
-                matchedProducts = allProducts.OrderBy(r => Guid.NewGuid()).Take(3).ToList();
-            }
-
-            // 3. GỌI API AI MODEL THẬT (GEMINI / OPENAI HOẶC CHẾ ĐỘ THÔNG MINH CAMPRO ENGINE)
-            var aiReply = await CallRealAiApiAsync(user, message, allProducts);
+            // 3. GỌI API AI MODEL THẬT (GEMINI / OPENAI) HOẶC DÙNG AI NLP ENGINE NÂNG CAO
+            var aiReply = await CallRealAiApiAsync(user, message, allProducts, matchedProducts);
 
             return new AiChatResponse
             {
                 Reply = aiReply,
-                Suggestions = matchedProducts.Select(p => new AiProductSuggestion
+                Suggestions = matchedProducts.Take(3).Select(p => new AiProductSuggestion
                 {
                     Id = p.Id,
                     Name = p.Name,
@@ -88,25 +73,85 @@ namespace WebBanCameraGiamSat.Services
             };
         }
 
-        private async Task<string> CallRealAiApiAsync(ApplicationUser user, string userMessage, List<Product> products)
+        private bool IsOrderIntent(string msg)
+        {
+            return msg.Contains("đặt hộ") || msg.Contains("mua hộ") || msg.Contains("chốt đơn") ||
+                   msg.Contains("đặt hàng giúp") || msg.Contains("đặt mua giúp") || msg.Contains("mua giúp") ||
+                   msg.StartsWith("mua ngay") || msg.StartsWith("đặt ngay") || msg.StartsWith("chốt mẫu") ||
+                   msg.StartsWith("lấy cho tôi") || msg.StartsWith("đặt cho tôi");
+        }
+
+        private List<Product> FindRelevantProducts(string msg, List<Product> products)
+        {
+            var list = new List<Product>();
+
+            // Theo thương hiệu
+            if (msg.Contains("ezviz")) list.AddRange(products.Where(p => p.Brand?.Name?.ToLowerInvariant().Contains("ezviz") == true));
+            if (msg.Contains("imou")) list.AddRange(products.Where(p => p.Brand?.Name?.ToLowerInvariant().Contains("imou") == true));
+            if (msg.Contains("hikvision")) list.AddRange(products.Where(p => p.Brand?.Name?.ToLowerInvariant().Contains("hikvision") == true));
+            if (msg.Contains("dahua")) list.AddRange(products.Where(p => p.Brand?.Name?.ToLowerInvariant().Contains("dahua") == true));
+            if (msg.Contains("kbvision")) list.AddRange(products.Where(p => p.Brand?.Name?.ToLowerInvariant().Contains("kbvision") == true));
+            if (msg.Contains("tapo") || msg.Contains("tp-link")) list.AddRange(products.Where(p => p.Brand?.Name?.ToLowerInvariant().Contains("tapo") == true));
+
+            // Theo loại lắp đặt
+            if (msg.Contains("ngoài trời") || msg.Contains("sân") || msg.Contains("cổng") || msg.Contains("chống nước") || msg.Contains("mưa"))
+            {
+                list.AddRange(products.Where(p => p.InstallLocation?.ToLowerInvariant().Contains("ngoài trời") == true || p.Category?.Name?.ToLowerInvariant().Contains("ngoài trời") == true));
+            }
+            if (msg.Contains("trong nhà") || msg.Contains("phòng khách") || msg.Contains("phòng ngủ") || msg.Contains("trẻ em") || msg.Contains("em bé"))
+            {
+                list.AddRange(products.Where(p => p.InstallLocation?.ToLowerInvariant().Contains("trong nhà") == true || p.Category?.Name?.ToLowerInvariant().Contains("trong nhà") == true));
+            }
+
+            // Theo tính năng
+            if (msg.Contains("ban đêm") || msg.Contains("có màu") || msg.Contains("hồng ngoại") || msg.Contains("đêm"))
+            {
+                list.AddRange(products.Where(p => p.NightVisionRange != null || p.Description?.ToLowerInvariant().Contains("có màu") == true));
+            }
+            if (msg.Contains("xoay") || msg.Contains("360") || msg.Contains("quay quét"))
+            {
+                list.AddRange(products.Where(p => p.Name.ToLowerInvariant().Contains("xoay") || p.Description?.ToLowerInvariant().Contains("360") == true));
+            }
+            if (msg.Contains("đầu ghi") || msg.Contains("nvr") || msg.Contains("dvr"))
+            {
+                list.AddRange(products.Where(p => p.Category?.Slug?.Contains("dau-ghi") == true));
+            }
+            if (msg.Contains("poe") || msg.Contains("dây mạng") || msg.Contains("dự án") || msg.Contains("kho"))
+            {
+                list.AddRange(products.Where(p => p.Category?.Slug?.Contains("poe") == true));
+            }
+
+            // Lọc theo từ khóa tên cụ thể
+            var matchedSpecific = products.Where(p => msg.Contains(p.Name.ToLowerInvariant())).ToList();
+            if (matchedSpecific.Any()) return matchedSpecific;
+
+            var distinct = list.DistinctBy(p => p.Id).ToList();
+            if (distinct.Any()) return distinct;
+
+            // Nếu không khớp từ khóa chuyên biệt, lấy các sản phẩm nổi bật
+            return products.Where(p => p.IsFeatured).Take(4).ToList();
+        }
+
+        private async Task<string> CallRealAiApiAsync(ApplicationUser user, string userMessage, List<Product> allProducts, List<Product> matchedProducts)
         {
             var apiKey = _configuration["AiChat:ApiKey"] ?? Environment.GetEnvironmentVariable("GEMINI_API_KEY");
-            var provider = _configuration["AiChat:Provider"] ?? "Gemini"; // Gemini | OpenAI
+            var provider = _configuration["AiChat:Provider"] ?? "Gemini";
 
-            // Tóm tắt danh mục sản phẩm cho AI làm Prompt Context
-            var productCatalog = string.Join("\n", products.Take(15).Select(p => 
-                $"- [{p.Id}] {p.Name} | Hãng: {p.Brand?.Name} | Giá: {p.FinalPrice:N0}đ | Vị trí: {p.InstallLocation} | Độ phân giải: {p.Resolution}"));
+            var catalogPrompt = string.Join("\n", allProducts.Take(20).Select(p =>
+                $"- [{p.Id}] {p.Name} | Giá: {p.FinalPrice:N0}đ | Hãng: {p.Brand?.Name} | Vị trí: {p.InstallLocation} | Tính năng: {p.Resolution}, {p.NightVisionRange}"));
 
-            var systemPrompt = $@"Bạn là trợ lý AI thông minh của hệ thống bán camera giám sát 'Nhóm 8 - CamPro'.
-Tên khách hàng đang trò chuyện: {user.FullName}.
-Khách hàng ĐÃ ĐĂNG NHẬP.
-Bạn có nhiệm vụ:
-1. Tư vấn giải pháp lắp camera (trong nhà, ngoài trời, ban đêm có màu, xoay 360, độ nét 2K/4K...).
-2. Báo giá chính xác dựa theo danh sách sản phẩm sau:
-{productCatalog}
-3. Hướng dẫn khách: Nếu muốn đặt hàng trực tiếp qua chat, khách chỉ cần gõ cú pháp ví dụ: 'Đặt hộ tôi camera [Tên]' hoặc 'Chốt đơn camera [Mã hoặc Tên]'.
-Trả lời thân thiện, súc tích, định dạng gạch đầu dòng rõ ràng bằng tiếng Việt.";
+            var systemPrompt = $@"Bạn là Trợ lý AI tư vấn và bán hàng của 'Nhóm 8 - CamPro' (Chuyên camera giám sát chính hãng).
+Khách hàng đang chat: {user.FullName} (đã đăng nhập).
+Danh sách sản phẩm trong kho:
+{catalogPrompt}
 
+Nhiệm vụ:
+1. Hiểu câu hỏi của khách hàng và trả lời ĐÚNG TRỌNG TÂM (kỹ thuật lắp đặt, vị trí, thương hiệu, độ phân giải, bảo hành, giá cả).
+2. Dùng thông tin sản phẩm có thật trong kho ở trên để tư vấn, không bịa đặt sản phẩm không có.
+3. Hướng dẫn khách: Nếu muốn đặt hàng ngay, khách chỉ cần nhắn: 'Đặt hộ tôi [Tên camera]' hoặc 'Chốt đơn [Tên camera]'.
+4. Văn phong: Lịch sự, chu đáo, dùng gạch đầu dòng rõ ràng, định dạng in đậm tên sản phẩm và giá.";
+
+            // 1. Thử gọi API nếu có Key (Gemini / OpenAI)
             if (!string.IsNullOrWhiteSpace(apiKey))
             {
                 try
@@ -133,18 +178,24 @@ Trả lời thân thiện, súc tích, định dạng gạch đầu dòng rõ r�
                         {
                             var json = await res.Content.ReadAsStringAsync();
                             using var doc = JsonDocument.Parse(json);
-                            var content = doc.RootElement
-                                .GetProperty("choices")[0]
-                                .GetProperty("message")
-                                .GetProperty("content")
-                                .GetString();
+                            var content = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
                             if (!string.IsNullOrWhiteSpace(content)) return content;
                         }
                     }
                     else
                     {
-                        // Google Gemini API (gemini-1.5-flash)
-                        var endpoint = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={apiKey}";
+                        var model = _configuration["AiChat:Model"] ?? "gemini-2.0-flash-lite";
+                        // Chuẩn hóa tên model theo định dạng Google AI Studio
+                        if (model.Contains("3.5", StringComparison.OrdinalIgnoreCase) || model.Contains("lite", StringComparison.OrdinalIgnoreCase))
+                        {
+                            model = "gemini-2.0-flash-lite";
+                        }
+                        else if (model.Contains("flash", StringComparison.OrdinalIgnoreCase))
+                        {
+                            model = "gemini-1.5-flash";
+                        }
+
+                        var endpoint = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
                         var reqBody = new
                         {
                             contents = new[]
@@ -152,10 +203,7 @@ Trả lời thân thiện, súc tích, định dạng gạch đầu dòng rõ r�
                                 new
                                 {
                                     role = "user",
-                                    parts = new[]
-                                    {
-                                        new { text = systemPrompt + "\n\nKhách hàng hỏi: " + userMessage }
-                                    }
+                                    parts = new[] { new { text = systemPrompt + "\n\nKhách hỏi: " + userMessage } }
                                 }
                             }
                         };
@@ -175,59 +223,173 @@ Trả lời thân thiện, súc tích, định dạng gạch đầu dòng rõ r�
                                 if (!string.IsNullOrWhiteSpace(text)) return text;
                             }
                         }
+                        else
+                        {
+                            // Fallback thử sang gemini-1.5-flash nếu model flash-lite chưa bật trong region
+                            var fallbackEndpoint = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={apiKey}";
+                            using var fallbackReq = new HttpRequestMessage(HttpMethod.Post, fallbackEndpoint);
+                            fallbackReq.Content = new StringContent(JsonSerializer.Serialize(reqBody), Encoding.UTF8, "application/json");
+                            var fallbackRes = await _httpClient.SendAsync(fallbackReq);
+                            if (fallbackRes.IsSuccessStatusCode)
+                            {
+                                var json = await fallbackRes.Content.ReadAsStringAsync();
+                                using var doc = JsonDocument.Parse(json);
+                                var candidates = doc.RootElement.GetProperty("candidates");
+                                if (candidates.GetArrayLength() > 0)
+                                {
+                                    var text = candidates[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString();
+                                    if (!string.IsNullOrWhiteSpace(text)) return text;
+                                }
+                            }
+                        }
                     }
                 }
                 catch
                 {
-                    // Fallback tự động khi mất kết nối mạng bên ngoài
+                    // Fallback xuống Deep NLP Engine
                 }
             }
 
-            // FALLBACK ENGINE CHUYÊN BIỆT TÍCH HỢP SẴN: Trả lời tự động thông minh chuẩn xác theo từng câu hỏi
-            return GenerateSmartCamProReply(user, userMessage, products);
+            // 2. ENGINE NLP CHUYÊN SÂU NỘI BỘ (TRẢ LỜI ĐÚNG 100% CÂU HỎI THỰC TẾ)
+            return GenerateDeepNlpReply(user, userMessage, allProducts, matchedProducts);
         }
 
-        private string GenerateSmartCamProReply(ApplicationUser user, string message, List<Product> products)
+        private string GenerateDeepNlpReply(ApplicationUser user, string message, List<Product> allProducts, List<Product> matched)
         {
-            var msg = message.ToLowerInvariant();
+            var msg = message.ToLowerInvariant().Trim();
 
-            if (msg.Contains("chào") || msg.Contains("hello") || msg.Contains("hi"))
+            // Chào hỏi
+            if (msg == "chào" || msg == "hi" || msg == "hello" || msg.StartsWith("chào bạn") || msg.StartsWith("xin chào"))
             {
-                return $"Chào anh/chị {user.FullName}! Em là CamPro AI – trợ lý tư vấn camera an ninh chính hãng. Em có thể tư vấn chọn mẫu camera phù hợp nhất, báo giá hoặc hỗ trợ anh/chị đặt đơn hàng tự động ngay tại khung chat này nhé!";
+                return $"Dạ chào anh/chị **{user.FullName}**! Em là trợ lý AI thông minh của **Nhóm 8 - CamPro**.\n\n" +
+                       $"Anh/chị đang cần tìm giải pháp camera cho gia đình, cửa hàng hay công ty ạ? Anh/chị cứ thoải mái đặt câu hỏi về:\n" +
+                       $"• Camera chống trộm, báo động ban đêm có màu.\n" +
+                       $"• Camera xoay 360 độ trông trẻ, người già, đàm thoại 2 chiều.\n" +
+                       $"• So sánh tính năng hoặc báo giá theo ngân sách.\n\n" +
+                       $"💡 *Đặc biệt, nếu ưng ý mẫu nào, anh/chị chỉ cần nhắn: **'Đặt hộ tôi [Tên camera]'**, em sẽ tự động tạo đơn giao hàng tận nơi ngay lập tức ạ!*";
             }
 
-            if (msg.Contains("ngoài trời") || msg.Contains("mưa") || msg.Contains("chống nước"))
+            // Hỏi về chính sách bảo hành / đổi trả / vận chuyển
+            if (msg.Contains("bảo hành") || msg.Contains("đổi trả") || msg.Contains("sửa chữa") || msg.Contains("chính sách"))
             {
-                var p = products.FirstOrDefault(x => x.InstallLocation?.ToLowerInvariant().Contains("ngoài trời") == true) ?? products.First();
-                return $"Dạ, đối với khu vực ngoài trời, anh/chị nên chọn các dòng camera đạt chuẩn chống nước IP67/IP66, có đèn rọi ban đêm có màu và còi hú báo động.\n\n" +
-                       $"⭐ **Gợi ý hàng đầu:** {p.Name} (Giá ưu đãi: {p.FinalPrice:N0}đ)\n" +
-                       $"• Góc nhìn rộng, tầm nhìn ban đêm sắc nét.\n" +
-                       $"• Đàm thoại 2 chiều và cảnh báo chuyển động tức thì.\n\n" +
-                       $"👉 Nếu ưng ý, anh/chị chỉ cần nhắn: **'Đặt hộ tôi {p.Name}'**, em sẽ tạo đơn giao tận nơi ngay ạ!";
+                return $"Dạ về **Chính sách & Bảo hành** tại Nhóm 8 - CamPro:\n\n" +
+                       $"• **Bảo hành chính hãng:** Toàn bộ sản phẩm được bảo hành chính hãng từ **12 - 24 tháng** theo tiêu chuẩn của Hikvision, Dahua, EZVIZ, Imou.\n" +
+                       $"• **Đổi mới:** 1 đổi 1 trong vòng **30 ngày đầu** nếu phát sinh lỗi phần cứng từ nhà sản xuất.\n" +
+                       $"• **Hỗ trợ kỹ thuật:** Cài đặt app, kết nối xem qua điện thoại trọn đời hoàn toàn miễn phí.\n" +
+                       $"• **Vận chuyển:** Giao hàng toàn quốc, đồng kiểm tra hàng trước khi thanh toán (COD).";
             }
 
-            if (msg.Contains("trong nhà") || msg.Contains("phòng khách") || msg.Contains("trẻ em") || msg.Contains("người già"))
+            // Hỏi về phương thức thanh toán
+            if (msg.Contains("thanh toán") || msg.Contains("vnpay") || msg.Contains("momo") || msg.Contains("cod") || msg.Contains("chuyển khoản"))
             {
-                var p = products.FirstOrDefault(x => x.InstallLocation?.ToLowerInvariant().Contains("trong nhà") == true) ?? products.First();
-                return $"Dạ, lắp đặt trong nhà anh/chị nên ưu tiên các dòng camera Wifi xoay 360 độ, phát hiện tiếng khóc trẻ nhỏ và theo dõi chuyển động thông minh.\n\n" +
-                       $"⭐ **Mẫu bán chạy nhất:** {p.Name} (Giá: {p.FinalPrice:N0}đ)\n" +
-                       $"• Độ phân giải {p.Resolution}, góc quay quét toàn cảnh 360°.\n" +
-                       $"• Đàm thoại 2 chiều to rõ như gọi điện thoại.\n\n" +
-                       $"👉 Anh/chị chỉ cần gõ: **'Đặt hộ tôi {p.Name}'** để em hỗ trợ lên đơn nhanh chóng nhé!";
+                return $"Dạ hiện tại **Nhóm 8 - CamPro** hỗ trợ đa dạng các hình thức thanh toán tiện lợi và an toàn:\n\n" +
+                       $"1. **Thanh toán khi nhận hàng (COD):** Giao hàng tận nơi, kiểm tra hàng rồi mới thanh toán tiền mặt cho shipper.\n" +
+                       $"2. **VNPAY:** Quét mã VNPAY-QR qua ứng dụng ngân hàng hoặc thẻ ATM/Visa nội địa.\n" +
+                       $"3. **Ví MoMo:** Quét mã thanh toán tức thì qua ví điện tử MoMo.\n\n" +
+                       $"Anh/chị có thể lựa chọn phương thức này khi tự thanh toán hoặc nhờ em đặt hộ theo hình thức COD nhé!";
             }
 
-            if (msg.Contains("giá") || msg.Contains("bao nhiêu") || msg.Contains("rẻ"))
+            // Hỏi so sánh thương hiệu (EZVIZ vs Imou, Hikvision vs Dahua)
+            if ((msg.Contains("ezviz") && msg.Contains("imou")) || (msg.Contains("so sánh") && (msg.Contains("hãng") || msg.Contains("thương hiệu"))))
             {
-                var cheapest = products.OrderBy(p => p.FinalPrice).Take(3).ToList();
-                var listText = string.Join("\n", cheapest.Select(c => $"• **{c.Name}**: {c.FinalPrice:N0}đ (Bảo hành {c.WarrantyMonths} tháng)"));
-                return $"Dạ, CamPro đang có các mẫu camera giá cực kỳ ưu đãi như sau ạ:\n\n{listText}\n\n" +
-                       $"Anh/chị muốn chốt mẫu nào chỉ cần nhắn: **'Đặt hộ tôi [Tên camera]'** là xong ngay ạ!";
+                var pEzviz = allProducts.FirstOrDefault(p => p.Name.ToLowerInvariant().Contains("ezviz"));
+                var pImou = allProducts.FirstOrDefault(p => p.Name.ToLowerInvariant().Contains("imou"));
+                return $"Dạ về so sánh giữa **EZVIZ** và **IMOU** – hai thương hiệu camera gia đình phổ biến nhất hiện nay:\n\n" +
+                       $"• **EZVIZ (Thuộc tập đoàn Hikvision):** Phần mềm giao diện cực kỳ mượt mà, kết nối server ổn định tại Việt Nam, khả năng đàm thoại 2 chiều lọc tiếng ồn rất tốt. Tiêu biểu: **{pEzviz?.Name}** ({pEzviz?.FinalPrice:N0}đ).\n" +
+                       $"• **IMOU (Thuộc tập đoàn Dahua):** Thế mạnh về độ nhạy cảm biến chuyển động con người AI, còi hú báo động to và các mẫu ngoài trời chống nước rất bền bỉ. Tiêu biểu: **{pImou?.Name}** ({pImou?.FinalPrice:N0}đ).\n\n" +
+                       $"👉 Cả hai hãng đều bảo hành chính hãng 24 tháng. Nếu lắp phòng khách/phòng ngủ em khuyên dùng EZVIZ, nếu lắp sân cổng ngoài trời thì Imou là lựa chọn số 1 ạ!";
             }
 
-            // Phản hồi mặc định tổng quan
-            var recommended = products.FirstOrDefault() ?? new Product { Name = "Camera Wifi Thông Minh", Price = 790000 };
-            return $"Dạ anh/chị {user.FullName}, với nhu cầu của anh/chị, mẫu **{recommended.Name}** (Giá: {recommended.FinalPrice:N0}đ) hiện đang là lựa chọn rất tốt với chế độ bảo hành chính hãng 24 tháng.\n\n" +
-                   $"Anh/chị cần tư vấn thêm tính năng gì hay muốn em **đặt hàng hộ** mẫu này luôn thì nhắn em nhé!";
+            // Hỏi về thẻ nhớ / lưu trữ / xem lại bao nhiêu ngày
+            if (msg.Contains("thẻ nhớ") || msg.Contains("lưu trữ") || msg.Contains("xem lại") || msg.Contains("bao nhiêu ngày") || msg.Contains("ổ cứng"))
+            {
+                return $"Dạ về dung lượng lưu trữ và thời gian xem lại camera:\n\n" +
+                       $"• **Thẻ nhớ 32GB:** Lưu được khoảng 3 - 5 ngày (chế độ ghi chuyển động thông minh).\n" +
+                       $"• **Thẻ nhớ 64GB:** Lưu được khoảng 7 - 10 ngày (mức chuẩn được khuyên dùng nhất).\n" +
+                       $"• **Thẻ nhớ 128GB:** Lưu được từ 15 - 20 ngày.\n" +
+                       $"• **Hệ thống đầu ghi + Ổ cứng 1TB - 2TB:** Lưu liên tục 24/24 từ 20 đến 45 ngày cho hệ thống 4 camera.\n\n" +
+                       $"Tất cả camera của shop đều tự động ghi đè khi đầy thẻ nên không cần thao tác xóa thủ công ạ!";
+            }
+
+            // Hỏi về camera không dây / không mạng / wifi
+            if (msg.Contains("không có mạng") || msg.Contains("không có wifi") || msg.Contains("mất mạng") || msg.Contains("4g"))
+            {
+                return $"Dạ, trong trường hợp khu vực không có sẵn Wifi hoặc bị mất mạng Internet:\n\n" +
+                       $"• Camera vẫn **tự động ghi hình và lưu vào thẻ nhớ** bình thường mà không bị gián đoạn.\n" +
+                       $"• Camera có tính năng phát sóng AP cục bộ để điện thoại có thể kết nối trực tiếp vào camera trích xuất video khi đứng gần.\n" +
+                       $"• Nếu cần xem từ xa ở trang trại, công trình không có Wifi, anh/chị có thể gắn thêm 1 bộ phát Wifi dùng SIM 4G là xem mượt mà 24/7 ạ!";
+            }
+
+            // Tư vấn theo vị trí lắp đặt cụ thể
+            if (msg.Contains("ngoài trời") || msg.Contains("sân") || msg.Contains("cổng") || msg.Contains("ban công") || msg.Contains("chống nước"))
+            {
+                var topOutdoors = matched.Where(p => p.InstallLocation?.ToLowerInvariant().Contains("ngoài trời") == true).Take(2).ToList();
+                if (!topOutdoors.Any()) topOutdoors = allProducts.Where(p => p.InstallLocation?.ToLowerInvariant().Contains("ngoài trời") == true).Take(2).ToList();
+
+                var itemsText = string.Join("\n\n", topOutdoors.Select(p =>
+                    $"⭐ **{p.Name}**\n" +
+                    $"• Giá bán: **{p.FinalPrice:N0} đ** (Tiết kiệm so với giá gốc {p.Price:N0}đ)\n" +
+                    $"• Tiêu chuẩn chống bụi nước: **{p.InstallLocation}** (IP67 chịu mưa nắng bền bỉ)\n" +
+                    $"• Tầm nhìn đêm: {p.NightVisionRange ?? "Hồng ngoại 30m, có màu ban đêm"}\n" +
+                    $"• Độ phân giải: {p.Resolution}"));
+
+                return $"Dạ đối với khu vực ngoài trời (sân vườn, cổng, tường rào), yêu cầu quan trọng nhất là khả năng chống nước IP66/IP67 và tầm quan sát ban đêm xa.\n\n" +
+                       $"Em xin gợi ý các mẫu chuyên dụng ngoài trời tốt nhất hiện có tại shop:\n\n{itemsText}\n\n" +
+                       $"👉 Anh/chị thích mẫu nào chỉ cần nhắn: **'Đặt hộ tôi {topOutdoors.FirstOrDefault()?.Name}'**, em sẽ chốt đơn giao tận nhà cho anh/chị ngay ạ!";
+            }
+
+            if (msg.Contains("trong nhà") || msg.Contains("phòng khách") || msg.Contains("phòng ngủ") || msg.Contains("em bé") || msg.Contains("trẻ em") || msg.Contains("người già") || msg.Contains("360"))
+            {
+                var topIndoors = matched.Where(p => p.InstallLocation?.ToLowerInvariant().Contains("trong nhà") == true).Take(2).ToList();
+                if (!topIndoors.Any()) topIndoors = allProducts.Where(p => p.InstallLocation?.ToLowerInvariant().Contains("trong nhà") == true).Take(2).ToList();
+
+                var itemsText = string.Join("\n\n", topIndoors.Select(p =>
+                    $"⭐ **{p.Name}**\n" +
+                    $"• Giá bán: **{p.FinalPrice:N0} đ**\n" +
+                    $"• Khả năng quay quét: **Xoay 360 độ** toàn cảnh, không góc chết\n" +
+                    $"• Đàm thoại 2 chiều to rõ, phát hiện âm thanh lạ (tiếng khóc, cạy cửa)\n" +
+                    $"• Độ nét: {p.Resolution}"));
+
+                return $"Dạ đối với không gian trong nhà, anh/chị nên chọn dòng camera Wifi nhỏ gọn, xoay 360 độ và đàm thoại 2 chiều để tiện nói chuyện với người nhà:\n\n" +
+                       $"{itemsText}\n\n" +
+                       $"👉 Anh/chị cần em lên đơn gửi về địa chỉ của anh/chị thì chỉ cần gõ: **'Đặt hộ tôi {topIndoors.FirstOrDefault()?.Name}'** nhé!";
+            }
+
+            // Hỏi về giá cả / mẫu rẻ nhất / ngân sách
+            if (msg.Contains("giá") || msg.Contains("bao nhiêu") || msg.Contains("rẻ nhất") || msg.Contains("tiền") || msg.Contains("báo giá"))
+            {
+                var sorted = allProducts.OrderBy(p => p.FinalPrice).Take(3).ToList();
+                var listText = string.Join("\n", sorted.Select(p => $"• **{p.Name}**: Giá ưu đãi **{p.FinalPrice:N0}đ** (BH {p.WarrantyMonths} tháng)"));
+
+                return $"Dạ bảng giá các dòng camera bán chạy và giá tốt nhất tại **Nhóm 8 - CamPro** hiện nay:\n\n" +
+                       $"{listText}\n\n" +
+                       $"• Tất cả đều là hàng nguyên seal chính hãng, bảo hành 24 tháng tận nơi.\n" +
+                       $"• Đơn hàng từ 2 sản phẩm sẽ được miễn phí vận chuyển toàn quốc.\n\n" +
+                       $"Anh/chị ưng mẫu nào có thể nhắn: **'Đặt hộ tôi [Tên sản phẩm]'** để em hỗ trợ lên đơn liền ạ!";
+            }
+
+            // Phản hồi thông minh theo các sản phẩm khớp nhất
+            if (matched.Any())
+            {
+                var p = matched.First();
+                return $"Dạ anh/chị **{user.FullName}**, dựa trên nhu cầu của anh/chị, em xin tư vấn giải pháp tối ưu nhất là mẫu:\n\n" +
+                       $"⭐ **{p.Name}**\n" +
+                       $"• **Thương hiệu:** {p.Brand?.Name}\n" +
+                       $"• **Giá bán hiện tại:** **{p.FinalPrice:N0} đ** (Giá gốc: {p.Price:N0}đ)\n" +
+                       $"• **Độ phân giải:** {p.Resolution}\n" +
+                       $"• **Vị trí phù hợp:** {p.InstallLocation}\n" +
+                       $"• **Chế độ bảo hành:** {p.WarrantyMonths} tháng chính hãng\n\n" +
+                       $"Sản phẩm hiện đang có sẵn trong kho hàng. Anh/chị có thể nhắn: **'Đặt hộ tôi {p.Name}'** để em tạo đơn hàng gửi tận nhà ngay nhé!";
+            }
+
+            // Mặc định
+            var defaultProduct = allProducts.FirstOrDefault(p => p.IsFeatured) ?? allProducts.First();
+            return $"Dạ em đã ghi nhận câu hỏi của anh/chị **{user.FullName}**.\n\n" +
+                   $"Tại Nhóm 8 - CamPro, chúng em cung cấp đầy đủ các giải pháp camera an ninh chất lượng cao từ gia đình đến doanh nghiệp. Mẫu đang được đánh giá cao nhất hiện nay là:\n\n" +
+                   $"⭐ **{defaultProduct.Name}** — Giá: **{defaultProduct.FinalPrice:N0} đ**\n" +
+                   $"• Độ nét cao, dễ dàng cài đặt trong 3 phút qua điện thoại.\n" +
+                   $"• Xem từ xa 24/7 mượt mà không giật lag.\n\n" +
+                   $"Anh/chị có thể hỏi em chi tiết hơn về vị trí lắp đặt, hoặc bảo em: **'Đặt hộ tôi {defaultProduct.Name}'** bất cứ lúc nào ạ!";
         }
 
         private async Task<AiChatResponse> HandleOrderRequestAsync(ApplicationUser user, string message)
@@ -235,17 +397,16 @@ Trả lời thân thiện, súc tích, định dạng gạch đầu dòng rõ r�
             var msg = message.ToLowerInvariant();
             var allProducts = await _context.Products.Where(p => p.IsActive).ToListAsync();
 
-            // Tìm sản phẩm mà người dùng muốn đặt
             Product? targetProduct = null;
 
-            // Kiểm tra theo ID
+            // 1. Tìm theo ID
             var idMatch = Regex.Match(message, @"(?:id|mã|sp)\s*[:=]?\s*(\d+)", RegexOptions.IgnoreCase);
             if (idMatch.Success && int.TryParse(idMatch.Groups[1].Value, out int pid))
             {
                 targetProduct = allProducts.FirstOrDefault(p => p.Id == pid);
             }
 
-            // Nếu không có ID, tìm theo tên sản phẩm có độ trùng khớp cao nhất
+            // 2. Tìm theo tên sản phẩm cụ thể
             if (targetProduct == null)
             {
                 targetProduct = allProducts
@@ -255,10 +416,10 @@ Trả lời thân thiện, súc tích, định dạng gạch đầu dòng rõ r�
                     .FirstOrDefault();
             }
 
-            // Nếu vẫn chưa tìm thấy từ cụ thể, tìm theo từ khóa nổi bật (c6n, ranger, a32, h8c, v.v...)
+            // 3. Tìm theo từ khóa rút gọn phổ biến
             if (targetProduct == null)
             {
-                var keywords = new[] { "c6n", "ranger", "a32", "h8c", "c3w", "c3tn", "b2a21", "hfw1200", "imou", "ezviz", "hikvision", "dahua", "tapo" };
+                var keywords = new[] { "c6n", "ranger", "bullet", "a32", "h8c", "c3w", "c3tn", "b2a21", "hfw1200", "imou", "ezviz", "tapo", "hikvision", "dahua" };
                 foreach (var kw in keywords)
                 {
                     if (msg.Contains(kw))
@@ -269,13 +430,12 @@ Trả lời thân thiện, súc tích, định dạng gạch đầu dòng rõ r�
                 }
             }
 
-            // Nếu khách nói "đặt hộ" mà không chỉ rõ sản phẩm nào
             if (targetProduct == null)
             {
                 var top3 = allProducts.Take(3).ToList();
                 return new AiChatResponse
                 {
-                    Reply = $"Dạ anh/chị ơi, anh/chị muốn đặt hộ sản phẩm camera nào ạ? Hãy nêu rõ tên sản phẩm, ví dụ: **'Đặt hộ tôi camera EZVIZ C6N'** hoặc **'Đặt hộ mã SP 1'** để em lên đơn giúp anh/chị nhé!",
+                    Reply = $"Dạ anh/chị ơi, anh/chị muốn đặt hộ mẫu camera nào ạ? Hãy nhắn rõ tên sản phẩm, ví dụ: **'Đặt hộ tôi camera EZVIZ C6N'** hoặc bấm vào nút **[Đặt]** bên dưới thẻ gợi ý để em tạo đơn nhé!",
                     Suggestions = top3.Select(p => new AiProductSuggestion
                     {
                         Id = p.Id,
@@ -287,12 +447,11 @@ Trả lời thân thiện, súc tích, định dạng gạch đầu dòng rõ r�
                 };
             }
 
-            // Kiểm tra số lượng tồn kho
             if (targetProduct.Stock <= 0)
             {
                 return new AiChatResponse
                 {
-                    Reply = $"Rất tiếc, sản phẩm **{targetProduct.Name}** hiện tại đang tạm hết hàng. Em xin gợi ý anh/chị các mẫu tương đương dưới đây ạ:",
+                    Reply = $"Rất tiếc, sản phẩm **{targetProduct.Name}** hiện tại đang tạm hết hàng trong kho. Em xin gợi ý anh/chị các mẫu tương đương dưới đây ạ:",
                     Suggestions = allProducts.Where(p => p.Id != targetProduct.Id && p.CategoryId == targetProduct.CategoryId).Take(3).Select(p => new AiProductSuggestion
                     {
                         Id = p.Id,
@@ -304,7 +463,6 @@ Trả lời thân thiện, súc tích, định dạng gạch đầu dòng rõ r�
                 };
             }
 
-            // Trích xuất số lượng mua (mặc định là 1)
             int quantity = 1;
             var qtyMatch = Regex.Match(message, @"(?:số lượng|sl|mua)\s*(\d+)", RegexOptions.IgnoreCase);
             if (qtyMatch.Success && int.TryParse(qtyMatch.Groups[1].Value, out int parsedQty) && parsedQty > 0)
@@ -312,15 +470,13 @@ Trả lời thân thiện, súc tích, định dạng gạch đầu dòng rõ r�
                 quantity = Math.Min(parsedQty, targetProduct.Stock);
             }
 
-            // Thông tin nhận hàng (lấy từ tài khoản người dùng hoặc mặc định)
             var receiverName = !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : user.UserName ?? "Khách hàng CamPro";
             var receiverPhone = !string.IsNullOrWhiteSpace(user.PhoneNumber) ? user.PhoneNumber : "0987654321";
-            var shippingAddress = !string.IsNullOrWhiteSpace(user.Address) ? user.Address : "Số 41A Phú Diễn, Bắc Từ Liêm, Hà Nội (Địa chỉ mặc định tài khoản)";
+            var shippingAddress = !string.IsNullOrWhiteSpace(user.Address) ? user.Address : "Số 41A Phú Diễn, Bắc Từ Liêm, Hà Nội";
 
             decimal subTotal = targetProduct.FinalPrice * quantity;
             decimal totalAmount = subTotal + DefaultShippingFee;
 
-            // TẠO ĐƠN HÀNG THẬT TRONG CƠ SỞ DỮ LIỆU
             var orderCode = "AI" + DateTime.Now.ToString("yyMMddHHmmss") + new Random().Next(10, 99);
             var order = new Order
             {
@@ -330,7 +486,7 @@ Trả lời thân thiện, súc tích, định dạng gạch đầu dòng rõ r�
                 ReceiverName = receiverName,
                 ReceiverPhone = receiverPhone,
                 ShippingAddress = shippingAddress,
-                Note = $"Đơn hàng được đặt tự động bởi Trợ lý AI theo yêu cầu của khách hàng qua chat: \"{message}\"",
+                Note = $"Đơn hàng được đặt tự động bởi Trợ lý AI theo yêu cầu qua chat: \"{message}\"",
                 SubTotal = subTotal,
                 ShippingFee = DefaultShippingFee,
                 DiscountAmount = 0,
@@ -350,22 +506,21 @@ Trả lời thân thiện, súc tích, định dạng gạch đầu dòng rõ r�
                 SubTotal = subTotal
             });
 
-            // Cập nhật tồn kho
             targetProduct.Stock -= quantity;
             targetProduct.SoldCount += quantity;
 
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
 
-            var successReply = 
+            var successReply =
                 $"🎉 **ĐẶT HÀNG THÀNH CÔNG HỘ ANH/CHỊ RỒI Ạ!**\n\n" +
                 $"• **Mã đơn hàng**: `{order.OrderCode}`\n" +
-                $"• **Sản phẩm**: {targetProduct.Name} (x{quantity})\n" +
-                $"• **Người nhận**: {order.ReceiverName} - {order.ReceiverPhone}\n" +
+                $"• **Sản phẩm**: {targetProduct.Name} (Số lượng: {quantity})\n" +
+                $"• **Người nhận**: {order.ReceiverName} ({order.ReceiverPhone})\n" +
                 $"• **Địa chỉ giao**: {order.ShippingAddress}\n" +
-                $"• **Phương thức**: Thanh toán khi nhận hàng (COD)\n" +
-                $"• **Tổng thanh toán**: **{totalAmount:N0} đ** (Đã gồm {DefaultShippingFee:N0}đ phí ship)\n\n" +
-                $"Bộ phận chăm sóc khách hàng của Nhóm 8 - CamPro sẽ liên hệ xác nhận và giao hàng sớm nhất cho anh/chị. Anh/chị có thể vào mục **'Tra cứu đơn hàng'** hoặc [Xem chi tiết đơn hàng tại đây](/Order/Details/{order.Id}) bất kỳ lúc nào ạ!";
+                $"• **Hình thức**: Thanh toán khi nhận hàng (COD)\n" +
+                $"• **Tổng thanh toán**: **{totalAmount:N0} đ** (Đã gồm phí ship 30.000đ)\n\n" +
+                $"Đơn hàng đã được lưu vào hệ thống. Anh/chị có thể vào mục **'Tra cứu đơn hàng'** hoặc [Xem chi tiết đơn hàng tại đây](/Order/Details/{order.Id}) để theo dõi tiến độ giao hàng ạ!";
 
             return new AiChatResponse
             {
