@@ -184,16 +184,8 @@ Nhiệm vụ:
                     }
                     else
                     {
-                        var model = _configuration["AiChat:Model"] ?? "gemini-2.0-flash-lite";
-                        // Chuẩn hóa tên model theo định dạng Google AI Studio
-                        if (model.Contains("3.5", StringComparison.OrdinalIgnoreCase) || model.Contains("lite", StringComparison.OrdinalIgnoreCase))
-                        {
-                            model = "gemini-2.0-flash-lite";
-                        }
-                        else if (model.Contains("flash", StringComparison.OrdinalIgnoreCase))
-                        {
-                            model = "gemini-1.5-flash";
-                        }
+                        var model = _configuration["AiChat:Model"] ?? "gemini-3.5-flash-lite";
+                        if (string.IsNullOrWhiteSpace(model)) model = "gemini-3.5-flash-lite";
 
                         var endpoint = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
                         var reqBody = new
