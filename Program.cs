@@ -8,9 +8,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-var useSqlite = builder.Configuration.GetValue<bool>("UseSqlite", false)
-                || (!OperatingSystem.IsWindows() && (connectionString?.Contains("(localdb)", StringComparison.OrdinalIgnoreCase) ?? false))
-                || (connectionString?.Contains(".db", StringComparison.OrdinalIgnoreCase) ?? false);
+var useSqlite = builder.Configuration.GetValue<bool>("UseSqlite", true)
+                || (!OperatingSystem.IsWindows() && (connectionString?.Contains("(localdb)", StringComparison.OrdinalIgnoreCase) ?? true))
+                || (connectionString?.Contains(".db", StringComparison.OrdinalIgnoreCase) ?? false)
+                || string.IsNullOrEmpty(connectionString)
+                || (connectionString?.Contains("(localdb)") == true);
 
 if (useSqlite)
 {

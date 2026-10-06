@@ -16,7 +16,9 @@ WORKDIR /app
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
+ENV UseSqlite=true
 
 COPY --from=build /app/publish .
+COPY WebBanCameraGiamSat.db ./
 
 ENTRYPOINT ["dotnet", "WebBanCameraGiamSat.dll"]
