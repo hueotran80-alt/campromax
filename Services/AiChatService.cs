@@ -54,7 +54,7 @@ namespace WebBanCameraGiamSat.Services
                 return await HandleOrderRequestAsync(user, message);
             }
 
-            // 3. TÌM KIẾM SẢN PHẨM PHÙ HỢP TỪ DATABASE
+            // 3. TÌM KIẾM SẢN PHẨM PHÙ HỢP TỪ DATABASE (CHỈ KHI NGỮ CẢNH CÓ NHU CẦU TÌM/MUA SẢN PHẨM)
             var allProducts = await _context.Products
                 .Include(p => p.Brand)
                 .Include(p => p.Category)
@@ -66,18 +66,40 @@ namespace WebBanCameraGiamSat.Services
             // 4. GỌI API AI MODEL THẬT (GEMINI / OPENAI) HOẶC DÙNG AI NLP ENGINE NÂNG CAO
             var aiReply = await CallRealAiApiAsync(user, message, allProducts, matchedProducts);
 
+            // Chỉ hiển thị thẻ gợi ý sản phẩm nếu câu hỏi thực sự liên quan đến tìm kiếm sản phẩm hoặc báo giá
+            var shouldShowSuggestions = matchedProducts.Any() && NeedsProductCards(cleanMsg);
+
             return new AiChatResponse
             {
                 Reply = aiReply,
-                Suggestions = matchedProducts.Take(3).Select(p => new AiProductSuggestion
+                Suggestions = shouldShowSuggestions ? matchedProducts.Take(3).Select(p => new AiProductSuggestion
                 {
                     Id = p.Id,
                     Name = p.Name,
                     Slug = p.Slug,
                     Price = p.FinalPrice,
                     ImageUrl = p.MainImageUrl
-                }).ToList()
+                }).ToList() : null
             };
+        }
+
+        private bool NeedsProductCards(string msg)
+        {
+            // Các câu hỏi chào hỏi, hỏi thông tin shop, chính sách, hỏi kỹ thuật chung KHÔNG gửi kèm thẻ sản phẩm
+            if (msg == "chào" || msg == "hi" || msg == "hello" || msg.StartsWith("chào bạn") || msg.StartsWith("xin chào") ||
+                msg.Contains("cảm ơn") || msg.Contains("thank") || msg.Contains("tạm biệt") || msg.Contains("bảo hành") ||
+                msg.Contains("đổi trả") || msg.Contains("vận chuyển") || msg.Contains("thanh toán") || msg.Contains("ở đâu") ||
+                msg.Contains("địa chỉ") || msg.Contains("số điện thoại") || msg.Contains("hotline") || msg.Contains("liên hệ") ||
+                msg.Contains("cách cài") || msg.Contains("hướng dẫn cài") || msg.Contains("xem lại") || msg.Contains("thẻ nhớ lưu được bao lâu"))
+            {
+                return false;
+            }
+
+            // Chỉ hiển thị thẻ khi có từ khóa tư vấn, mua sắm, giá cả, hoặc nêu tên hãng, loại camera cụ thể
+            return msg.Contains("tư vấn") || msg.Contains("gợi ý") || msg.Contains("giá") || msg.Contains("bao nhiêu") ||
+                   msg.Contains("mua") || msg.Contains("mẫu") || msg.Contains("camera") || msg.Contains("ezviz") ||
+                   msg.Contains("imou") || msg.Contains("hikvision") || msg.Contains("dahua") || msg.Contains("ngoài trời") ||
+                   msg.Contains("trong nhà") || msg.Contains("360") || msg.Contains("xoay") || msg.Contains("đầu ghi");
         }
 
         private bool IsAddToCartIntent(string msg)
@@ -142,8 +164,13 @@ namespace WebBanCameraGiamSat.Services
             var distinct = list.DistinctBy(p => p.Id).ToList();
             if (distinct.Any()) return distinct;
 
-            // Nếu không khớp từ khóa chuyên biệt, lấy các sản phẩm nổi bật
-            return products.Where(p => p.IsFeatured).Take(4).ToList();
+            // Nếu người dùng có nhu cầu tìm sản phẩm nhưng từ khóa chung chung, mới lấy 3 mẫu tiêu biểu
+            if (NeedsProductCards(msg))
+            {
+                return products.Where(p => p.IsFeatured).Take(3).ToList();
+            }
+
+            return new List<Product>();
         }
 
         private async Task<string> CallRealAiApiAsync(ApplicationUser user, string userMessage, List<Product> allProducts, List<Product> matchedProducts)
