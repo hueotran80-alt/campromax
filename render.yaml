@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: nhom8-campro
+    runtime: docker
+    plan: free
+    region: singapore
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: UseSqlite
+        value: "true"
