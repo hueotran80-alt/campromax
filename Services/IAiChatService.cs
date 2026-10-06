@@ -11,6 +11,8 @@ namespace WebBanCameraGiamSat.Services
         public bool OrderPlaced { get; set; } = false;
         public string? OrderCode { get; set; }
         public decimal TotalAmount { get; set; }
+        public bool AddedToCart { get; set; } = false;
+        public int CartCount { get; set; }
         public List<AiProductSuggestion>? Suggestions { get; set; }
     }
 

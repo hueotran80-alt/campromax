@@ -41,13 +41,20 @@ namespace WebBanCameraGiamSat.Services
 
             var cleanMsg = message.Trim().ToLowerInvariant();
 
-            // 1. KIỂM TRA Ý ĐỊNH ĐẶT HÀNG HỘ (ORDER INTENT)
+            // 1. KIỂM TRA Ý ĐỊNH THÊM VÀO GIỎ HÀNG (KHÔNG THANH TOÁN NGAY)
+            // Ví dụ: "thêm vào giỏ", "bỏ vào giỏ", "cho vào giỏ camera c6n", "chỉ thêm vào giỏ chứ ko thanh toán"
+            if (IsAddToCartIntent(cleanMsg))
+            {
+                return await HandleAddToCartRequestAsync(user, message);
+            }
+
+            // 2. KIỂM TRA Ý ĐỊNH ĐẶT HÀNG HỘ (ORDER INTENT)
             if (IsOrderIntent(cleanMsg))
             {
                 return await HandleOrderRequestAsync(user, message);
             }
 
-            // 2. TÌM KIẾM SẢN PHẨM PHÙ HỢP TỪ DATABASE
+            // 3. TÌM KIẾM SẢN PHẨM PHÙ HỢP TỪ DATABASE
             var allProducts = await _context.Products
                 .Include(p => p.Brand)
                 .Include(p => p.Category)
@@ -56,7 +63,7 @@ namespace WebBanCameraGiamSat.Services
 
             var matchedProducts = FindRelevantProducts(cleanMsg, allProducts);
 
-            // 3. GỌI API AI MODEL THẬT (GEMINI / OPENAI) HOẶC DÙNG AI NLP ENGINE NÂNG CAO
+            // 4. GỌI API AI MODEL THẬT (GEMINI / OPENAI) HOẶC DÙNG AI NLP ENGINE NÂNG CAO
             var aiReply = await CallRealAiApiAsync(user, message, allProducts, matchedProducts);
 
             return new AiChatResponse
@@ -71,6 +78,13 @@ namespace WebBanCameraGiamSat.Services
                     ImageUrl = p.MainImageUrl
                 }).ToList()
             };
+        }
+
+        private bool IsAddToCartIntent(string msg)
+        {
+            return msg.Contains("thêm vào giỏ") || msg.Contains("cho vào giỏ") || msg.Contains("bỏ vào giỏ") ||
+                   msg.Contains("lưu vào giỏ") || msg.Contains("nhét vào giỏ") || msg.Contains("thêm giỏ hàng") ||
+                   msg.Contains("cho vô giỏ") || (msg.Contains("vào giỏ") && !msg.Contains("thanh toán ngay"));
         }
 
         private bool IsOrderIntent(string msg)
@@ -520,6 +534,132 @@ Nhiệm vụ:
                 OrderPlaced = true,
                 OrderCode = order.OrderCode,
                 TotalAmount = totalAmount,
+                Suggestions = new List<AiProductSuggestion>
+                {
+                    new AiProductSuggestion
+                    {
+                        Id = targetProduct.Id,
+                        Name = targetProduct.Name,
+                        Slug = targetProduct.Slug,
+                        Price = targetProduct.FinalPrice,
+                        ImageUrl = targetProduct.MainImageUrl
+                    }
+                }
+            };
+        }
+
+        private async Task<AiChatResponse> HandleAddToCartRequestAsync(ApplicationUser user, string message)
+        {
+            var msg = message.ToLowerInvariant();
+            var allProducts = await _context.Products.Where(p => p.IsActive).ToListAsync();
+
+            Product? targetProduct = null;
+
+            // 1. Tìm theo ID
+            var idMatch = Regex.Match(message, @"(?:id|mã|sp)\s*[:=]?\s*(\d+)", RegexOptions.IgnoreCase);
+            if (idMatch.Success && int.TryParse(idMatch.Groups[1].Value, out int pid))
+            {
+                targetProduct = allProducts.FirstOrDefault(p => p.Id == pid);
+            }
+
+            // 2. Tìm theo tên sản phẩm
+            if (targetProduct == null)
+            {
+                targetProduct = allProducts
+                    .Where(p => msg.Contains(p.Name.ToLowerInvariant()) ||
+                                (p.SKU != null && msg.Contains(p.SKU.ToLowerInvariant())))
+                    .OrderByDescending(p => p.Name.Length)
+                    .FirstOrDefault();
+            }
+
+            // 3. Tìm theo từ khóa rút gọn
+            if (targetProduct == null)
+            {
+                var keywords = new[] { "c6n", "ranger", "bullet", "a32", "h8c", "c3w", "c3tn", "b2a21", "hfw1200", "imou", "ezviz", "tapo", "hikvision", "dahua" };
+                foreach (var kw in keywords)
+                {
+                    if (msg.Contains(kw))
+                    {
+                        targetProduct = allProducts.FirstOrDefault(p => p.Name.ToLowerInvariant().Contains(kw) || p.Slug.Contains(kw));
+                        if (targetProduct != null) break;
+                    }
+                }
+            }
+
+            if (targetProduct == null)
+            {
+                var top3 = allProducts.Take(3).ToList();
+                return new AiChatResponse
+                {
+                    Reply = $"Dạ anh/chị muốn thêm sản phẩm nào vào giỏ hàng ạ? Anh/chị hãy nhắn tên cụ thể (ví dụ: **'Thêm vào giỏ camera EZVIZ C6N'**) hoặc bấm nút **[Thêm giỏ]** bên dưới thẻ gợi ý nhé!",
+                    Suggestions = top3.Select(p => new AiProductSuggestion
+                    {
+                        Id = p.Id,
+                        Name = p.Name,
+                        Slug = p.Slug,
+                        Price = p.FinalPrice,
+                        ImageUrl = p.MainImageUrl
+                    }).ToList()
+                };
+            }
+
+            if (targetProduct.Stock <= 0)
+            {
+                return new AiChatResponse
+                {
+                    Reply = $"Rất tiếc, sản phẩm **{targetProduct.Name}** hiện tại đang tạm hết hàng trong kho nên chưa thể thêm vào giỏ. Anh/chị tham khảo mẫu tương đương này nhé:",
+                    Suggestions = allProducts.Where(p => p.Id != targetProduct.Id && p.CategoryId == targetProduct.CategoryId).Take(3).Select(p => new AiProductSuggestion
+                    {
+                        Id = p.Id,
+                        Name = p.Name,
+                        Slug = p.Slug,
+                        Price = p.FinalPrice,
+                        ImageUrl = p.MainImageUrl
+                    }).ToList()
+                };
+            }
+
+            int quantity = 1;
+            var qtyMatch = Regex.Match(message, @"(?:số lượng|sl|mua)\s*(\d+)", RegexOptions.IgnoreCase);
+            if (qtyMatch.Success && int.TryParse(qtyMatch.Groups[1].Value, out int parsedQty) && parsedQty > 0)
+            {
+                quantity = Math.Min(parsedQty, targetProduct.Stock);
+            }
+
+            // Thêm vào bảng CartItems của User trong CSDL
+            var cartItem = await _context.CartItems.FirstOrDefaultAsync(c => c.UserId == user.Id && c.ProductId == targetProduct.Id);
+            if (cartItem != null)
+            {
+                cartItem.Quantity += quantity;
+            }
+            else
+            {
+                cartItem = new CartItem
+                {
+                    UserId = user.Id,
+                    ProductId = targetProduct.Id,
+                    Quantity = quantity,
+                    AddedDate = DateTime.Now
+                };
+                _context.CartItems.Add(cartItem);
+            }
+            await _context.SaveChangesAsync();
+
+            var totalCartCount = await _context.CartItems.Where(c => c.UserId == user.Id).SumAsync(c => c.Quantity);
+
+            var replyText =
+                $"🛒 **ĐÃ THÊM VÀO GIỎ HÀNG THÀNH CÔNG!**\n\n" +
+                $"• **Sản phẩm**: {targetProduct.Name}\n" +
+                $"• **Số lượng**: {quantity}\n" +
+                $"• **Đơn giá**: {targetProduct.FinalPrice:N0} đ\n\n" +
+                $"Đơn hàng **chưa được thanh toán**. Sản phẩm đã được lưu an toàn trong giỏ hàng để anh/chị tiếp tục xem thêm các mẫu khác.\n\n" +
+                $"👉 Anh/chị có thể [Bấm vào đây để vào Giỏ hàng xem lại](/Cart) hoặc khi nào muốn chốt chỉ cần bảo em: **'Chốt đơn'** nhé!";
+
+            return new AiChatResponse
+            {
+                Reply = replyText,
+                AddedToCart = true,
+                CartCount = totalCartCount,
                 Suggestions = new List<AiProductSuggestion>
                 {
                     new AiProductSuggestion

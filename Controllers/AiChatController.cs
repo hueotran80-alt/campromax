@@ -45,6 +45,8 @@ namespace WebBanCameraGiamSat.Controllers
                 orderPlaced = result.OrderPlaced,
                 orderCode = result.OrderCode,
                 totalAmount = result.TotalAmount,
+                addedToCart = result.AddedToCart,
+                cartCount = result.CartCount,
                 suggestions = result.Suggestions
             });
         }

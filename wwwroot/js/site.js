@@ -291,6 +291,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     '</div>';
         }
 
+        if (data.addedToCart) {
+            if (typeof updateCartBadge === 'function') {
+                updateCartBadge(data.cartCount);
+            }
+            html += '<div class="alert alert-info py-2 px-3 mt-2 mb-1 small d-flex justify-content-between align-items-center">' +
+                    '<span><i class="bi bi-cart-check-fill text-success"></i> Đã thêm vào giỏ hàng!</span>' +
+                    '<a href="/Cart" class="btn btn-sm btn-primary py-0 px-2">Vào giỏ ngay</a>' +
+                    '</div>';
+        }
+
         if (data.suggestions && data.suggestions.length) {
             html += '<div class="mt-2 pt-2 border-top"><small class="text-muted fw-bold d-block mb-1">Gợi ý sản phẩm phù hợp:</small>';
             data.suggestions.forEach(function (s) {
@@ -300,9 +310,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         '<a href="/san-pham/' + s.slug + '" class="fw-bold text-dark text-truncate d-block" style="font-size:12px;">' + s.name + '</a>' +
                         '<span class="text-danger fw-bold small">' + formatVnd(s.price) + '</span>' +
                         '</div>' +
-                        '<button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 btn-ai-quick-order" data-name="' + s.name + '" title="Nhờ AI đặt nhanh">' +
-                        '<i class="bi bi-cart-plus"></i> Đặt' +
+                        '<div class="d-flex gap-1">' +
+                        '<button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 btn-ai-quick-cart" data-name="' + s.name + '" title="Chỉ thêm vào giỏ hàng">' +
+                        '<i class="bi bi-cart-plus"></i> Giỏ' +
                         '</button>' +
+                        '<button type="button" class="btn btn-primary btn-sm py-0 px-1 btn-ai-quick-order" data-name="' + s.name + '" title="Đặt hàng hộ ngay">' +
+                        '<i class="bi bi-bag-check"></i> Mua' +
+                        '</button>' +
+                        '</div>' +
                         '</div>';
             });
             html += '</div>';
@@ -313,12 +328,23 @@ document.addEventListener('DOMContentLoaded', function () {
         aiMessages.appendChild(msgDiv);
         scrollChatToBottom();
 
-        // Gắn sự kiện nút Đặt nhanh trên thẻ gợi ý
+        // Gắn sự kiện nút Mua ngay trên thẻ gợi ý
         msgDiv.querySelectorAll('.btn-ai-quick-order').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var pName = this.dataset.name;
                 if (aiInput) {
                     aiInput.value = 'Đặt hộ tôi ' + pName;
+                    aiForm.dispatchEvent(new Event('submit'));
+                }
+            });
+        });
+
+        // Gắn sự kiện nút Thêm vào giỏ trên thẻ gợi ý
+        msgDiv.querySelectorAll('.btn-ai-quick-cart').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var pName = this.dataset.name;
+                if (aiInput) {
+                    aiInput.value = 'Thêm vào giỏ camera ' + pName;
                     aiForm.dispatchEvent(new Event('submit'));
                 }
             });
