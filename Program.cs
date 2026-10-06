@@ -59,6 +59,8 @@ builder.Services.AddSession(options =>
 });
 
 // App services
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<IAiChatService, AiChatService>();
 builder.Services.AddScoped<IVnPayService, VnPayService>();
 builder.Services.AddScoped<IMoMoService, MoMoService>();
 

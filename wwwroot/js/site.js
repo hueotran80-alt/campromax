@@ -212,4 +212,160 @@ document.addEventListener('DOMContentLoaded', function () {
             this.classList.add('active');
         });
     });
+
+    // ===== AI Chatbox Controller =====
+    var aiToggleBtn = document.getElementById('aiChatToggleBtn');
+    var aiChatBox = document.getElementById('aiChatBox');
+    var aiCloseBtn = document.getElementById('aiChatCloseBtn');
+    var aiForm = document.getElementById('aiChatForm');
+    var aiInput = document.getElementById('aiChatInput');
+    var aiMessages = document.getElementById('aiChatMessages');
+
+    if (aiToggleBtn && aiChatBox) {
+        aiToggleBtn.addEventListener('click', function () {
+            aiChatBox.classList.toggle('d-none');
+            if (!aiChatBox.classList.contains('d-none') && aiInput) {
+                aiInput.focus();
+                scrollChatToBottom();
+            }
+        });
+
+        if (aiCloseBtn) {
+            aiCloseBtn.addEventListener('click', function () {
+                aiChatBox.classList.add('d-none');
+            });
+        }
+    }
+
+    function scrollChatToBottom() {
+        if (aiMessages) {
+            aiMessages.scrollTop = aiMessages.scrollHeight;
+        }
+    }
+
+    function appendUserMessage(text) {
+        if (!aiMessages) return;
+        var msgDiv = document.createElement('div');
+        msgDiv.className = 'ai-msg user';
+        msgDiv.innerHTML = '<div class="msg-bubble">' + escapeHtml(text) + '</div>';
+        aiMessages.appendChild(msgDiv);
+        scrollChatToBottom();
+    }
+
+    function appendBotTypingIndicator() {
+        if (!aiMessages) return null;
+        var indicator = document.createElement('div');
+        indicator.id = 'aiTypingIndicator';
+        indicator.className = 'ai-msg bot';
+        indicator.innerHTML = '<div class="ai-typing-indicator"><span></span><span></span><span></span></div>';
+        aiMessages.appendChild(indicator);
+        scrollChatToBottom();
+        return indicator;
+    }
+
+    function removeBotTypingIndicator() {
+        var el = document.getElementById('aiTypingIndicator');
+        if (el) el.remove();
+    }
+
+    function appendBotMessage(data) {
+        if (!aiMessages) return;
+        removeBotTypingIndicator();
+        var msgDiv = document.createElement('div');
+        msgDiv.className = 'ai-msg bot';
+
+        // Parse markdown basic: **bold**, list items, [link](url)
+        var formatted = (data.reply || '')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary fw-bold text-decoration-underline" target="_blank">$1</a>')
+            .replace(/\n/g, '<br/>');
+
+        var html = '<div class="msg-bubble"><p class="mb-1">' + formatted + '</p>';
+
+        if (data.orderPlaced && data.orderCode) {
+            html += '<div class="alert alert-success py-2 px-3 mt-2 mb-1 small">' +
+                    '<i class="bi bi-check-circle-fill"></i> Đã tự động tạo đơn: <strong>' + data.orderCode + '</strong>' +
+                    '<div class="mt-1"><a href="/Order/History" class="btn btn-sm btn-outline-success py-0 px-2">Xem lịch sử đơn</a></div>' +
+                    '</div>';
+        }
+
+        if (data.suggestions && data.suggestions.length) {
+            html += '<div class="mt-2 pt-2 border-top"><small class="text-muted fw-bold d-block mb-1">Gợi ý sản phẩm phù hợp:</small>';
+            data.suggestions.forEach(function (s) {
+                html += '<div class="ai-suggestion-card">' +
+                        (s.imageUrl ? '<img src="' + s.imageUrl + '" alt="" />' : '') +
+                        '<div class="flex-grow-1" style="min-width: 0;">' +
+                        '<a href="/san-pham/' + s.slug + '" class="fw-bold text-dark text-truncate d-block" style="font-size:12px;">' + s.name + '</a>' +
+                        '<span class="text-danger fw-bold small">' + formatVnd(s.price) + '</span>' +
+                        '</div>' +
+                        '<button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 btn-ai-quick-order" data-name="' + s.name + '" title="Nhờ AI đặt nhanh">' +
+                        '<i class="bi bi-cart-plus"></i> Đặt' +
+                        '</button>' +
+                        '</div>';
+            });
+            html += '</div>';
+        }
+
+        html += '</div>';
+        msgDiv.innerHTML = html;
+        aiMessages.appendChild(msgDiv);
+        scrollChatToBottom();
+
+        // Gắn sự kiện nút Đặt nhanh trên thẻ gợi ý
+        msgDiv.querySelectorAll('.btn-ai-quick-order').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var pName = this.dataset.name;
+                if (aiInput) {
+                    aiInput.value = 'Đặt hộ tôi ' + pName;
+                    aiForm.dispatchEvent(new Event('submit'));
+                }
+            });
+        });
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>"']/g, function (m) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+        });
+    }
+
+    if (aiForm && aiInput) {
+        aiForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var text = aiInput.value.trim();
+            if (!text) return;
+
+            appendUserMessage(text);
+            aiInput.value = '';
+            appendBotTypingIndicator();
+
+            fetch('/AiChat/SendMessage', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': getCsrfToken()
+                },
+                body: JSON.stringify({ message: text })
+            })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (data.requireLogin) {
+                    removeBotTypingIndicator();
+                    showToast(data.message || 'Vui lòng đăng nhập để sử dụng tính năng này!', 'warning');
+                    setTimeout(function () {
+                        window.location.href = '/Account/Login?returnUrl=' + encodeURIComponent(window.location.pathname);
+                    }, 1200);
+                    return;
+                }
+                appendBotMessage(data);
+            })
+            .catch(function (err) {
+                removeBotTypingIndicator();
+                appendBotMessage({ reply: 'Có lỗi xảy ra khi kết nối tới CamPro AI. Vui lòng thử lại sau giây lát!' });
+            });
+        });
+    }
 });
+

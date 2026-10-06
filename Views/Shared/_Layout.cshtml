@@ -205,6 +205,67 @@
 
     <a href="#" id="backToTop" class="back-to-top"><i class="bi bi-arrow-up"></i></a>
 
+    <!-- AI Chatbox Widget -->
+    <div id="aiChatWidget" class="ai-chat-widget">
+        <!-- Nút tròn mở chatbox -->
+        <button id="aiChatToggleBtn" class="ai-chat-btn" title="Trợ lý AI CamPro - Tư vấn & Đặt hàng hộ">
+            <span class="ai-chat-icon"><i class="bi bi-robot"></i></span>
+            <span class="ai-chat-btn-text d-none d-sm-inline">CamPro AI</span>
+            <span class="ai-badge-pulse"></span>
+        </button>
+
+        <!-- Khung cửa sổ Chatbox -->
+        <div id="aiChatBox" class="ai-chat-window d-none">
+            <div class="ai-chat-header">
+                <div class="ai-header-info">
+                    <div class="ai-avatar"><i class="bi bi-robot"></i></div>
+                    <div>
+                        <div class="ai-name">CamPro AI Assistant</div>
+                        <div class="ai-status"><span class="status-dot"></span> Sẵn sàng tư vấn & Đặt hàng hộ</div>
+                    </div>
+                </div>
+                <button id="aiChatCloseBtn" class="ai-close-btn" type="button"><i class="bi bi-x-lg"></i></button>
+            </div>
+
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <div class="ai-chat-body" id="aiChatMessages">
+                    <div class="ai-msg bot">
+                        <div class="msg-bubble">
+                            <p class="mb-1">👋 Xin chào <strong>@User.Identity.Name</strong>!</p>
+                            <p class="mb-2">Em là trợ lý CamPro AI. Em có thể:</p>
+                            <ul class="mb-2 ps-3">
+                                <li>Tư vấn giải pháp camera trong nhà / ngoài trời.</li>
+                                <li>Báo giá sản phẩm theo ngân sách.</li>
+                                <li><strong>Đặt hàng hộ anh/chị trực tiếp</strong> ngay tại đây!</li>
+                            </ul>
+                            <small class="text-muted d-block fst-italic">💡 Thử gõ: <code>"Tư vấn camera ngoài trời"</code> hoặc <code>"Đặt hộ tôi camera EZVIZ C6N"</code></small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ai-chat-footer">
+                    <form id="aiChatForm" class="d-flex align-items-center gap-1">
+                        <input type="text" id="aiChatInput" class="form-control form-control-sm" placeholder="Hỏi AI hoặc nhắn 'Đặt hộ tôi camera...'..." autocomplete="off" />
+                        <button type="submit" id="aiChatSendBtn" class="btn btn-primary btn-sm px-3"><i class="bi bi-send-fill"></i></button>
+                    </form>
+                </div>
+            }
+            else
+            {
+                <div class="ai-chat-auth-required">
+                    <div class="auth-icon"><i class="bi bi-shield-lock-fill"></i></div>
+                    <h5>Yêu cầu đăng nhập</h5>
+                    <p class="text-muted small px-3">Tính năng <strong>Trợ lý AI & Đặt hàng hộ tự động</strong> chỉ khả dụng cho thành viên đã có tài khoản.</p>
+                    <div class="d-flex flex-column gap-2 px-4 w-100">
+                        <a href="/Account/Login?returnUrl=@Context.Request.Path" class="btn btn-primary btn-sm"><i class="bi bi-box-arrow-in-right"></i> Đăng nhập ngay</a>
+                        <a href="/Account/Register" class="btn btn-outline-secondary btn-sm"><i class="bi bi-person-plus"></i> Đăng ký tài khoản</a>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
