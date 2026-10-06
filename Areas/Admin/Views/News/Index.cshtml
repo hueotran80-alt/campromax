@@ -1,0 +1,29 @@
+@model List<NewsPost>
+@{ ViewData["Title"] = "Quản lý tin tức"; }
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h5 class="mb-0">Danh sách bài viết (@Model.Count)</h5>
+        <a asp-action="Create" class="btn-admin-primary"><i class="bi bi-plus-lg"></i> Thêm bài viết</a>
+    </div>
+    <table class="admin-table">
+        <thead><tr><th>Hình</th><th>Tiêu đề</th><th>Ngày đăng</th><th>Lượt xem</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var n in Model)
+            {
+                <tr>
+                    <td><img src="@n.ImageUrl" class="admin-thumb" /></td>
+                    <td><strong>@n.Title</strong></td>
+                    <td>@n.CreatedDate.ToString("dd/MM/yyyy")</td>
+                    <td>@n.ViewCount</td>
+                    <td>@(n.IsPublished ? Html.Raw("<span class='badge-status badge-active'>Đã đăng</span>") : Html.Raw("<span class='badge-status badge-inactive'>Nháp</span>"))</td>
+                    <td class="admin-actions">
+                        <a asp-action="Edit" asp-route-id="@n.Id" class="btn-icon-edit"><i class="bi bi-pencil"></i></a>
+                        <form asp-action="Delete" asp-route-id="@n.Id" method="post" onsubmit="return confirm('Xóa bài viết này?');">
+                            <button type="submit" class="btn-icon-delete"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

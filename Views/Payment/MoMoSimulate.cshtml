@@ -1,0 +1,29 @@
+@model WebBanCameraGiamSat.Services.MoMoRequestResult
+@{
+    ViewData["Title"] = "Thanh toán MoMo";
+    var order = ViewBag.Order as Order;
+}
+<div class="container py-5">
+    <div class="momo-payment-box">
+        <div class="momo-header">
+            <i class="bi bi-wallet2"></i>
+            <h3>Thanh toán qua ví MoMo</h3>
+            <span class="momo-demo-tag">Chế độ Demo / Mô phỏng</span>
+        </div>
+        <p class="text-muted text-center">Đây là luồng <strong>mô phỏng</strong> thanh toán MoMo dùng cho mục đích học tập/demo vì dự án chưa đăng ký tài khoản merchant MoMo thật.</p>
+
+        <div class="momo-qr-box">
+            <div class="momo-qr-fake">
+                <i class="bi bi-qr-code"></i>
+            </div>
+            <p>Mã đơn hàng: <strong>@Model.OrderCode</strong></p>
+            <p>Số tiền: <strong class="text-danger">@SlugHelper.FormatVnd(Model.Amount)</strong></p>
+        </div>
+
+        <form asp-controller="Payment" asp-action="MoMoConfirm" method="post" class="text-center">
+            <input type="hidden" name="orderCode" value="@Model.OrderCode" />
+            <button type="submit" class="btn-place-order"><i class="bi bi-check-circle"></i> Tôi đã thanh toán (Demo)</button>
+        </form>
+        <a asp-controller="Home" asp-action="Index" class="d-block text-center mt-3">Hủy và về trang chủ</a>
+    </div>
+</div>

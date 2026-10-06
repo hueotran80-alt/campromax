@@ -1,0 +1,282 @@
+@model ProductDetailViewModel
+@{
+    ViewData["Title"] = Model.Product.Name;
+    var p = Model.Product;
+    int totalReviews = Model.RatingBreakdown.Values.Sum();
+}
+<div class="container py-3">
+    <nav class="breadcrumb-nav">
+        <a href="/">Trang chủ</a> <i class="bi bi-chevron-right"></i>
+        <a href="/danh-muc/@p.Category?.Slug">@p.Category?.Name</a> <i class="bi bi-chevron-right"></i>
+        <span>@p.Name</span>
+    </nav>
+</div>
+
+<div class="container">
+    <div class="product-detail-card">
+        <div class="row g-4">
+            <div class="col-lg-5">
+                <div class="product-gallery">
+                    <div class="gallery-main">
+                        <img id="mainProductImage" src="@p.MainImageUrl?v=20261006" alt="@p.Name" />
+                        @if (p.DiscountPercent > 0)
+                        {
+                            <span class="badge-sale-lg">-@p.DiscountPercent%</span>
+                        }
+                    </div>
+                    @if (p.Images.Any())
+                    {
+                        <div class="gallery-thumbs">
+                            @foreach (var img in p.Images)
+                            {
+                                <img src="@img.ImageUrl?v=20261006" class="gallery-thumb-item" onclick="document.getElementById('mainProductImage').src=this.src" />
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <span class="product-brand-tag">@p.Brand?.Name</span>
+                <h1 class="product-detail-title">@p.Name</h1>
+                <div class="product-detail-meta">
+                    <div class="product-rating">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            <i class="bi @(i <= Math.Round(p.AverageRating) ? "bi-star-fill" : "bi-star")"></i>
+                        }
+                        <span class="rating-count">(@p.ReviewCount đánh giá)</span>
+                    </div>
+                    <span class="divider">|</span>
+                    <span><i class="bi bi-eye"></i> @p.ViewCount lượt xem</span>
+                    <span class="divider">|</span>
+                    <span><i class="bi bi-bag-check"></i> Đã bán @p.SoldCount</span>
+                </div>
+
+                <div class="product-detail-price">
+                    <span class="price-final">@SlugHelper.FormatVnd(p.FinalPrice)</span>
+                    @if (p.DiscountPercent > 0)
+                    {
+                        <span class="price-old">@SlugHelper.FormatVnd(p.Price)</span>
+                        <span class="badge-discount-inline">Tiết kiệm @SlugHelper.FormatVnd(p.Price - p.FinalPrice)</span>
+                    }
+                </div>
+
+                <p class="product-short-desc">@p.ShortDescription</p>
+
+                <table class="spec-quick-table">
+                    <tbody>
+                        @if (!string.IsNullOrEmpty(p.Resolution) && p.Resolution != "-")
+                        {
+                            <tr><td><i class="bi bi-badge-hd"></i> Độ phân giải</td><td>@p.Resolution</td></tr>
+                        }
+                        @if (!string.IsNullOrEmpty(p.ConnectionType) && p.ConnectionType != "-")
+                        {
+                            <tr><td><i class="bi bi-wifi"></i> Kết nối</td><td>@p.ConnectionType</td></tr>
+                        }
+                        @if (!string.IsNullOrEmpty(p.InstallLocation) && p.InstallLocation != "-")
+                        {
+                            <tr><td><i class="bi bi-geo"></i> Vị trí lắp đặt</td><td>@p.InstallLocation</td></tr>
+                        }
+                        @if (!string.IsNullOrEmpty(p.NightVisionRange) && p.NightVisionRange != "-")
+                        {
+                            <tr><td><i class="bi bi-moon-stars"></i> Hồng ngoại</td><td>@p.NightVisionRange</td></tr>
+                        }
+                        @if (!string.IsNullOrEmpty(p.StorageType) && p.StorageType != "-")
+                        {
+                            <tr><td><i class="bi bi-sd-card"></i> Lưu trữ</td><td>@p.StorageType</td></tr>
+                        }
+                        <tr><td><i class="bi bi-shield-check"></i> Bảo hành</td><td>@p.WarrantyMonths tháng chính hãng</td></tr>
+                        <tr><td><i class="bi bi-upc-scan"></i> Mã SKU</td><td>@p.SKU</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="product-stock-status">
+                    @if (p.Stock > 0)
+                    {
+                        <span class="text-success"><i class="bi bi-check-circle-fill"></i> Còn hàng (@p.Stock sản phẩm)</span>
+                    }
+                    else
+                    {
+                        <span class="text-danger"><i class="bi bi-x-circle-fill"></i> Tạm hết hàng</span>
+                    }
+                </div>
+
+                <div class="product-buy-actions">
+                    <div class="qty-input">
+                        <button type="button" id="qtyMinus">-</button>
+                        <input type="number" id="qtyInput" value="1" min="1" max="@p.Stock" />
+                        <button type="button" id="qtyPlus">+</button>
+                    </div>
+                    <button type="button" class="btn-add-cart-lg" data-product-id="@p.Id" @(p.Stock <= 0 ? "disabled" : "")>
+                        <i class="bi bi-cart-plus"></i> Thêm vào giỏ hàng
+                    </button>
+                    <button type="button" class="btn-wishlist-lg @(Model.AlreadyInWishlist ? "active" : "")" data-product-id="@p.Id">
+                        <i class="bi @(Model.AlreadyInWishlist ? "bi-heart-fill" : "bi-heart")"></i>
+                    </button>
+                </div>
+
+                <div class="product-trust-badges">
+                    <div><i class="bi bi-truck"></i> Giao hàng toàn quốc</div>
+                    <div><i class="bi bi-arrow-repeat"></i> Đổi trả trong 7 ngày</div>
+                    <div><i class="bi bi-patch-check"></i> Hàng chính hãng 100%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs: mo ta / thong so / danh gia -->
+    <div class="product-tabs-wrap">
+        <ul class="nav nav-tabs product-tabs" role="tablist">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-desc">Mô tả sản phẩm</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-video"><i class="bi bi-play-circle-fill text-danger me-1"></i> Video thực tế</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-review">Đánh giá (@p.ReviewCount)</button></li>
+        </ul>
+        <div class="tab-content product-tab-content">
+            <div class="tab-pane fade show active" id="tab-desc">
+                @Html.Raw(p.Description)
+            </div>
+            <div class="tab-pane fade" id="tab-video">
+                <div class="py-3">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-camera-video text-primary me-2"></i>Trải nghiệm chất lượng ghi hình & kiểm thử sản phẩm</h5>
+                    <p class="text-muted">Video trích xuất thực tế kiểm tra khả năng bắt chuyển động, độ nét ban ngày và chế độ nhìn đêm của thiết bị.</p>
+                    <div class="position-relative overflow-hidden shadow-sm rounded" style="max-width: 800px; background: #000;">
+                        <video controls poster="@p.MainImageUrl" style="width: 100%; aspect-ratio: 16/9; display: block; object-fit: cover;" preload="metadata">
+                            <source src="/videos/cctv-night-vision-demo.mp4" type="video/mp4" />
+                            Trình duyệt không hỗ trợ xem video.
+                        </video>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="tab-review">
+                <div class="review-summary">
+                    <div class="review-summary-score">
+                        <h2>@p.AverageRating.ToString("0.0")</h2>
+                        <div class="product-rating">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                <i class="bi @(i <= Math.Round(p.AverageRating) ? "bi-star-fill" : "bi-star")"></i>
+                            }
+                        </div>
+                        <span>@p.ReviewCount đánh giá</span>
+                    </div>
+                    <div class="review-summary-bars">
+                        @for (int i = 5; i >= 1; i--)
+                        {
+                            int count = Model.RatingBreakdown.ContainsKey(i) ? Model.RatingBreakdown[i] : 0;
+                            int percent = totalReviews > 0 ? (count * 100 / totalReviews) : 0;
+                            <div class="rating-bar-row">
+                                <span>@i <i class="bi bi-star-fill"></i></span>
+                                <div class="rating-bar"><div class="rating-bar-fill" style="width:@percent%"></div></div>
+                                <span>@count</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @if (Model.CanReview)
+                {
+                    <form asp-controller="Review" asp-action="AddReview" method="post" class="review-form">
+                        <input type="hidden" name="productId" value="@p.Id" />
+                        <h6>Viết đánh giá của bạn</h6>
+                        <div class="star-input" id="starInput">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                <i class="bi bi-star" data-value="@i"></i>
+                            }
+                        </div>
+                        <input type="hidden" name="rating" id="ratingValue" value="5" />
+                        <textarea name="comment" class="form-control" rows="3" placeholder="Chia sẻ cảm nhận của bạn về sản phẩm..." required></textarea>
+                        <button type="submit" class="btn-primary-lg mt-2">Gửi đánh giá</button>
+                    </form>
+                }
+                else if (User.Identity != null && User.Identity.IsAuthenticated)
+                {
+                    <p class="text-muted"><i class="bi bi-info-circle"></i> Bạn cần mua và nhận hàng thành công sản phẩm này để có thể đánh giá.</p>
+                }
+                else
+                {
+                    <p class="text-muted"><i class="bi bi-info-circle"></i> <a asp-controller="Account" asp-action="Login">Đăng nhập</a> để viết đánh giá.</p>
+                }
+
+                <div class="review-list">
+                    @if (!Model.Reviews.Any())
+                    {
+                        <p class="text-muted">Chưa có đánh giá nào cho sản phẩm này.</p>
+                    }
+                    @foreach (var r in Model.Reviews)
+                    {
+                        <div class="review-item">
+                            <div class="review-item-header">
+                                <div class="review-avatar"><i class="bi bi-person-circle"></i></div>
+                                <div>
+                                    <strong>@(r.User?.FullName ?? "Khách hàng")</strong>
+                                    <div class="product-rating">
+                                        @for (int i = 1; i <= 5; i++)
+                                        {
+                                            <i class="bi @(i <= r.Rating ? "bi-star-fill" : "bi-star")"></i>
+                                        }
+                                    </div>
+                                </div>
+                                <span class="review-date">@r.CreatedDate.ToString("dd/MM/yyyy")</span>
+                            </div>
+                            <p class="review-comment">@r.Comment</p>
+                            @if (!string.IsNullOrEmpty(r.AdminReply))
+                            {
+                                <div class="review-admin-reply">
+                                    <strong><i class="bi bi-shop"></i> Phản hồi từ CamPro Security:</strong>
+                                    <p>@r.AdminReply</p>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.RelatedProducts.Any())
+    {
+        <div class="section-header mt-4">
+            <h2><i class="bi bi-grid-fill"></i> Sản phẩm liên quan</h2>
+        </div>
+        <div class="product-grid mb-5">
+            @foreach (var rp in Model.RelatedProducts)
+            {
+                <partial name="_ProductCard" model="rp" />
+            }
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+    document.getElementById('qtyPlus')?.addEventListener('click', function () {
+        var input = document.getElementById('qtyInput');
+        input.value = Math.min(parseInt(input.value) + 1, parseInt(input.max || 99));
+    });
+    document.getElementById('qtyMinus')?.addEventListener('click', function () {
+        var input = document.getElementById('qtyInput');
+        input.value = Math.max(parseInt(input.value) - 1, 1);
+    });
+    document.querySelector('.btn-add-cart-lg')?.addEventListener('click', function () {
+        var qty = parseInt(document.getElementById('qtyInput').value) || 1;
+        addToCart(this.dataset.productId, qty);
+    });
+
+    // Star input cho form danh gia
+    var starInput = document.getElementById('starInput');
+    if (starInput) {
+        var stars = starInput.querySelectorAll('i');
+        stars.forEach(function (star) {
+            star.addEventListener('click', function () {
+                var val = parseInt(this.dataset.value);
+                document.getElementById('ratingValue').value = val;
+                stars.forEach(function (s) {
+                    s.classList.toggle('bi-star-fill', parseInt(s.dataset.value) <= val);
+                    s.classList.toggle('bi-star', parseInt(s.dataset.value) > val);
+                });
+            });
+        });
+    }
+</script>
+}

@@ -1,0 +1,14 @@
+## Ignore Visual Studio & .NET build artifacts
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vscode/
+.idea/
+
+## Ignore local DB files and sensitive logs
+*.log
+WebBanCameraGiamSat.db-shm
+WebBanCameraGiamSat.db-wal

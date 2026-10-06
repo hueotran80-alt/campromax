@@ -1,0 +1,17 @@
+@model Order
+@{
+    ViewData["Title"] = "Đặt hàng thành công";
+}
+<div class="container py-5">
+    <div class="order-success-box">
+        <i class="bi bi-check-circle-fill"></i>
+        <h2>Đặt hàng thành công!</h2>
+        <p>Cảm ơn bạn đã mua sắm tại CamPro Security. Mã đơn hàng của bạn là:</p>
+        <h4 class="order-code">@Model.OrderCode</h4>
+        <p>Chúng tôi sẽ liên hệ xác nhận đơn hàng trong thời gian sớm nhất qua số điện thoại <strong>@Model.ReceiverPhone</strong>.</p>
+        <div class="order-success-actions">
+            <a asp-controller="Order" asp-action="Details" asp-route-id="@Model.Id" class="btn-primary-lg">Xem chi tiết đơn hàng</a>
+            <a href="/san-pham" class="btn-outline-lg">Tiếp tục mua sắm</a>
+        </div>
+    </div>
+</div>

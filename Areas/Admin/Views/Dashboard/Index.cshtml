@@ -1,0 +1,131 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Tổng quan";
+}
+<div class="admin-stat-grid">
+    <div class="admin-stat-card stat-blue">
+        <i class="bi bi-cash-coin"></i>
+        <div><span>Doanh thu hôm nay</span><h3>@SlugHelper.FormatVnd(Model.RevenueToday)</h3></div>
+    </div>
+    <div class="admin-stat-card stat-green">
+        <i class="bi bi-calendar-month"></i>
+        <div><span>Doanh thu tháng này</span><h3>@SlugHelper.FormatVnd(Model.RevenueThisMonth)</h3></div>
+    </div>
+    <div class="admin-stat-card stat-orange">
+        <i class="bi bi-bag-check"></i>
+        <div><span>Tổng đơn hàng</span><h3>@Model.TotalOrders</h3></div>
+    </div>
+    <div class="admin-stat-card stat-red">
+        <i class="bi bi-hourglass-split"></i>
+        <div><span>Chờ xác nhận</span><h3>@Model.PendingOrders</h3></div>
+    </div>
+    <div class="admin-stat-card stat-purple">
+        <i class="bi bi-camera-video"></i>
+        <div><span>Sản phẩm đang bán</span><h3>@Model.TotalProducts</h3></div>
+    </div>
+    <div class="admin-stat-card stat-teal">
+        <i class="bi bi-people"></i>
+        <div><span>Khách hàng</span><h3>@Model.TotalCustomers</h3></div>
+    </div>
+</div>
+
+<div class="row g-4 mt-1">
+    <div class="col-lg-8">
+        <div class="admin-card">
+            <h5>Doanh thu 7 ngày gần nhất</h5>
+            <canvas id="revenueChart" height="100"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="admin-card">
+            <h5>Trạng thái đơn hàng</h5>
+            <canvas id="statusChart" height="180"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mt-1">
+    <div class="col-lg-6">
+        <div class="admin-card">
+            <h5>Top 5 sản phẩm bán chạy</h5>
+            <table class="admin-table">
+                <thead><tr><th>Sản phẩm</th><th>Đã bán</th><th>Doanh thu</th></tr></thead>
+                <tbody>
+                    @foreach (var p in Model.TopSellingProducts)
+                    {
+                        <tr>
+                            <td class="cart-product-cell"><img src="@p.ImageUrl" /> <span>@p.Name</span></td>
+                            <td>@p.SoldCount</td>
+                            <td>@SlugHelper.FormatVnd(p.Revenue)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (Model.LowStockProducts.Any())
+        {
+            <div class="admin-card mt-3 border-warning">
+                <h5><i class="bi bi-exclamation-triangle text-warning"></i> Sản phẩm sắp hết hàng</h5>
+                <ul class="low-stock-list">
+                    @foreach (var p in Model.LowStockProducts)
+                    {
+                        <li><span>@p.Name</span><strong class="text-danger">Còn @p.Stock</strong></li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+    <div class="col-lg-6">
+        <div class="admin-card">
+            <h5>Đơn hàng gần đây</h5>
+            <table class="admin-table">
+                <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Tổng tiền</th><th>Trạng thái</th></tr></thead>
+                <tbody>
+                    @foreach (var o in Model.RecentOrders)
+                    {
+                        <tr>
+                            <td><a href="/Admin/Orders/Details/@o.Id">@o.OrderCode</a></td>
+                            <td>@o.ReceiverName</td>
+                            <td>@SlugHelper.FormatVnd(o.TotalAmount)</td>
+                            <td><span class="order-status-badge status-@o.Status">@DashboardController.OrderStatusText(o.Status)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const revenueCtx = document.getElementById('revenueChart');
+    new Chart(revenueCtx, {
+        type: 'line',
+        data: {
+            labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RevenueChartLabels)),
+            datasets: [{
+                label: 'Doanh thu (đ)',
+                data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RevenueChartData)),
+                borderColor: '#ff6600',
+                backgroundColor: 'rgba(255,102,0,0.1)',
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+
+    const statusCtx = document.getElementById('statusChart');
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.OrderStatusCounts.Select(x => x.StatusName))),
+            datasets: [{
+                data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.OrderStatusCounts.Select(x => x.Count))),
+                backgroundColor: ['#0f1b3d', '#00b4d8', '#ff6600', '#2ecc71', '#9b59b6', '#e74c3c']
+            }]
+        },
+        options: { responsive: true }
+    });
+</script>
+}

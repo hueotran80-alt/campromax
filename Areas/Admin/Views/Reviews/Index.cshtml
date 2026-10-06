@@ -1,0 +1,41 @@
+@model List<Review>
+@{ ViewData["Title"] = "Quản lý đánh giá"; }
+<div class="admin-card">
+    <h5 class="mb-3">Danh sách đánh giá (@Model.Count)</h5>
+    @foreach (var r in Model)
+    {
+        <div class="admin-review-item">
+            <div class="admin-review-header">
+                <img src="@r.Product?.MainImageUrl" class="admin-thumb" />
+                <div>
+                    <strong>@r.Product?.Name</strong>
+                    <div class="product-rating">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            <i class="bi @(i <= r.Rating ? "bi-star-fill" : "bi-star")"></i>
+                        }
+                    </div>
+                    <small class="text-muted">Bởi @(r.User?.FullName) - @r.CreatedDate.ToString("dd/MM/yyyy")</small>
+                </div>
+                <span class="ms-auto">@(r.IsApproved ? Html.Raw("<span class='badge-status badge-active'>Hiển thị</span>") : Html.Raw("<span class='badge-status badge-inactive'>Đã ẩn</span>"))</span>
+            </div>
+            <p class="admin-review-comment">@r.Comment</p>
+            @if (!string.IsNullOrEmpty(r.AdminReply))
+            {
+                <div class="review-admin-reply"><strong>Phản hồi:</strong> @r.AdminReply</div>
+            }
+            <div class="admin-review-actions">
+                <form asp-action="Reply" asp-route-id="@r.Id" method="post" class="d-flex gap-2 flex-grow-1">
+                    <input type="text" name="adminReply" class="form-control form-control-sm" placeholder="Nhập phản hồi..." value="@r.AdminReply" />
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Phản hồi</button>
+                </form>
+                <form asp-action="ToggleApprove" asp-route-id="@r.Id" method="post">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">@(r.IsApproved ? "Ẩn" : "Hiện")</button>
+                </form>
+                <form asp-action="Delete" asp-route-id="@r.Id" method="post" onsubmit="return confirm('Xóa đánh giá này?');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
+                </form>
+            </div>
+        </div>
+    }
+</div>

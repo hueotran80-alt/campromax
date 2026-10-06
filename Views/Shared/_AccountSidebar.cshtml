@@ -1,0 +1,24 @@
+@{
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+}
+<div class="account-sidebar">
+    <div class="account-sidebar-header">
+        <i class="bi bi-person-circle"></i>
+        <span>@(User.Identity?.Name ?? "Tài khoản")</span>
+    </div>
+    <ul>
+        <li class="@(currentController == "Account" && currentAction == "Profile" ? "active" : "")">
+            <a asp-controller="Account" asp-action="Profile"><i class="bi bi-person"></i> Hồ sơ của tôi</a>
+        </li>
+        <li class="@(currentController == "Order" ? "active" : "")">
+            <a asp-controller="Order" asp-action="History"><i class="bi bi-bag-check"></i> Đơn hàng của tôi</a>
+        </li>
+        <li class="@(currentController == "Wishlist" ? "active" : "")">
+            <a asp-controller="Wishlist" asp-action="Index"><i class="bi bi-heart"></i> Sản phẩm yêu thích</a>
+        </li>
+        <li class="@(currentController == "Account" && currentAction == "ChangePassword" ? "active" : "")">
+            <a asp-controller="Account" asp-action="ChangePassword"><i class="bi bi-shield-lock"></i> Đổi mật khẩu</a>
+        </li>
+    </ul>
+</div>

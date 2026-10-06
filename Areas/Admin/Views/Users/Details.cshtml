@@ -1,0 +1,38 @@
+@model ApplicationUser
+@{
+    ViewData["Title"] = "Chi tiết khách hàng";
+    var orders = ViewBag.Orders as List<Order> ?? new();
+    var roles = ViewBag.Roles as IList<string>;
+}
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="admin-card">
+            <h5>Thông tin khách hàng</h5>
+            <p><strong>Họ tên:</strong> @Model.FullName</p>
+            <p><strong>Email:</strong> @Model.Email</p>
+            <p><strong>SĐT:</strong> @Model.PhoneNumber</p>
+            <p><strong>Địa chỉ:</strong> @Model.Address</p>
+            <p><strong>Vai trò:</strong> @string.Join(", ", roles ?? new List<string>())</p>
+            <p><strong>Ngày tham gia:</strong> @Model.CreatedDate.ToString("dd/MM/yyyy")</p>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="admin-card">
+            <h5>Lịch sử đơn hàng (@orders.Count)</h5>
+            <table class="admin-table">
+                <thead><tr><th>Mã đơn</th><th>Ngày đặt</th><th>Tổng tiền</th><th>Trạng thái</th></tr></thead>
+                <tbody>
+                    @foreach (var o in orders)
+                    {
+                        <tr>
+                            <td><a href="/Admin/Orders/Details/@o.Id">@o.OrderCode</a></td>
+                            <td>@o.OrderDate.ToString("dd/MM/yyyy")</td>
+                            <td>@SlugHelper.FormatVnd(o.TotalAmount)</td>
+                            <td><span class="order-status-badge status-@o.Status">@DashboardController.OrderStatusText(o.Status)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

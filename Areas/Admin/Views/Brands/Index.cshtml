@@ -1,0 +1,28 @@
+@model List<Brand>
+@{ ViewData["Title"] = "Quản lý thương hiệu"; }
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h5 class="mb-0">Danh sách thương hiệu (@Model.Count)</h5>
+        <a asp-action="Create" class="btn-admin-primary"><i class="bi bi-plus-lg"></i> Thêm thương hiệu</a>
+    </div>
+    <table class="admin-table">
+        <thead><tr><th>Logo</th><th>Tên thương hiệu</th><th>Số sản phẩm</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var b in Model)
+            {
+                <tr>
+                    <td><img src="@b.LogoUrl" class="admin-thumb" /></td>
+                    <td><strong>@b.Name</strong></td>
+                    <td>@b.Products.Count</td>
+                    <td>@(b.IsActive ? Html.Raw("<span class='badge-status badge-active'>Hoạt động</span>") : Html.Raw("<span class='badge-status badge-inactive'>Đã ẩn</span>"))</td>
+                    <td class="admin-actions">
+                        <a asp-action="Edit" asp-route-id="@b.Id" class="btn-icon-edit"><i class="bi bi-pencil"></i></a>
+                        <form asp-action="Delete" asp-route-id="@b.Id" method="post" onsubmit="return confirm('Xóa thương hiệu này?');">
+                            <button type="submit" class="btn-icon-delete"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

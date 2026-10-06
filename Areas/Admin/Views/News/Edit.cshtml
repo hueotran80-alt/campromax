@@ -1,0 +1,16 @@
+@model NewsPost
+@{ ViewData["Title"] = "Sửa bài viết"; }
+<div class="admin-card" style="max-width:800px;">
+    <form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+        <input type="hidden" asp-for="Id" />
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <div class="mb-3"><label class="form-label">Tiêu đề</label><input asp-for="Title" class="form-control" /></div>
+        <div class="mb-3"><label class="form-label">Tóm tắt</label><input asp-for="Summary" class="form-control" /></div>
+        <div class="mb-3"><label class="form-label">Hình ảnh (URL)</label><input asp-for="ImageUrl" class="form-control" /></div>
+        <div class="mb-3"><label class="form-label">Nội dung (hỗ trợ HTML)</label><textarea asp-for="Content" class="form-control" rows="8"></textarea></div>
+        <div class="form-check form-switch mb-3"><input asp-for="IsPublished" class="form-check-input" role="switch" /><label asp-for="IsPublished" class="form-check-label">Đăng bài</label></div>
+        <button type="submit" class="btn-admin-primary">Cập nhật</button>
+        <a asp-action="Index" class="btn-admin-outline">Hủy</a>
+    </form>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

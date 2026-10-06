@@ -1,0 +1,9 @@
+@model Product
+@{
+    ViewData["Title"] = "Sửa sản phẩm";
+}
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data">
+    <input type="hidden" asp-for="Id" />
+    <partial name="_ProductForm" model="Model" />
+</form>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

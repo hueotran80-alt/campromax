@@ -1,0 +1,129 @@
+@model Product
+@{
+    var categories = ViewBag.Categories as List<Category> ?? new();
+    var brands = ViewBag.Brands as List<Brand> ?? new();
+    bool isEdit = Model.Id > 0;
+}
+<div asp-validation-summary="ModelOnly" class="text-danger"></div>
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="admin-card">
+            <h5>Thông tin cơ bản</h5>
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Tên sản phẩm</label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Danh mục</label>
+                    <select asp-for="CategoryId" class="form-select">
+                        <option value="">-- Chọn danh mục --</option>
+                        @foreach (var c in categories)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                    <span asp-validation-for="CategoryId" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Thương hiệu</label>
+                    <select asp-for="BrandId" class="form-select">
+                        <option value="">-- Chọn thương hiệu --</option>
+                        @foreach (var b in brands)
+                        {
+                            <option value="@b.Id">@b.Name</option>
+                        }
+                    </select>
+                    <span asp-validation-for="BrandId" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Mã SKU</label>
+                    <input asp-for="SKU" class="form-control" />
+                    <span asp-validation-for="SKU" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Bảo hành (tháng)</label>
+                    <input asp-for="WarrantyMonths" type="number" class="form-control" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Mô tả ngắn</label>
+                    <input asp-for="ShortDescription" class="form-control" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Mô tả chi tiết (hỗ trợ HTML)</label>
+                    <textarea asp-for="Description" class="form-control" rows="6"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-card">
+            <h5>Thông số kỹ thuật</h5>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Độ phân giải</label>
+                    <input asp-for="Resolution" class="form-control" placeholder="VD: 2MP Full HD 1080P" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Kiểu kết nối</label>
+                    <input asp-for="ConnectionType" class="form-control" placeholder="VD: Wifi 2.4GHz" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Vị trí lắp đặt</label>
+                    <input asp-for="InstallLocation" class="form-control" placeholder="VD: Trong nhà / Ngoài trời" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Hồng ngoại ban đêm</label>
+                    <input asp-for="NightVisionRange" class="form-control" placeholder="VD: 30m hồng ngoại" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Lưu trữ</label>
+                    <input asp-for="StorageType" class="form-control" placeholder="VD: Thẻ nhớ Micro SD / Cloud" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="admin-card">
+            <h5>Giá &amp; Tồn kho</h5>
+            <div class="mb-3">
+                <label class="form-label">Giá gốc (VNĐ)</label>
+                <input asp-for="Price" type="number" class="form-control" />
+                <span asp-validation-for="Price" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Giá khuyến mãi (VNĐ)</label>
+                <input asp-for="DiscountPrice" type="number" class="form-control" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Số lượng tồn kho</label>
+                <input asp-for="Stock" type="number" class="form-control" />
+                <span asp-validation-for="Stock" class="text-danger"></span>
+            </div>
+            <div class="form-check form-switch mb-2">
+                <input asp-for="IsFeatured" class="form-check-input" role="switch" />
+                <label asp-for="IsFeatured" class="form-check-label">Sản phẩm nổi bật</label>
+            </div>
+            <div class="form-check form-switch">
+                <input asp-for="IsActive" class="form-check-input" role="switch" />
+                <label asp-for="IsActive" class="form-check-label">Đang kinh doanh</label>
+            </div>
+        </div>
+
+        <div class="admin-card">
+            <h5>Hình ảnh sản phẩm</h5>
+            @if (isEdit && !string.IsNullOrEmpty(Model.MainImageUrl))
+            {
+                <img src="@Model.MainImageUrl" class="admin-image-preview" />
+            }
+            <input type="file" name="imageFile" class="form-control mt-2" accept="image/*" />
+            <input type="hidden" asp-for="MainImageUrl" />
+            <small class="text-muted">Để trống nếu không muốn thay đổi hình ảnh hiện tại. Có thể dán URL vào ô ẩn trong DevTools nếu muốn dùng ảnh có sẵn trong /images/products/.</small>
+        </div>
+    </div>
+</div>
+<div class="admin-form-actions">
+    <button type="submit" class="btn-admin-primary"><i class="bi bi-check-lg"></i> @(isEdit ? "Cập nhật" : "Thêm mới")</button>
+    <a asp-action="Index" class="btn-admin-outline">Hủy</a>
+</div>

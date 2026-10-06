@@ -1,0 +1,37 @@
+@model List<ApplicationUser>
+@{
+    ViewData["Title"] = "Quản lý khách hàng";
+    var roles = ViewBag.Roles as Dictionary<string, IList<string>>;
+}
+<div class="admin-card">
+    <div class="admin-card-header">
+        <form class="admin-filter-form" method="get">
+            <input type="text" name="keyword" class="form-control" placeholder="Tìm theo tên hoặc email..." value="@ViewBag.Keyword" />
+            <button type="submit" class="btn btn-outline-secondary">Tìm</button>
+        </form>
+    </div>
+    <table class="admin-table">
+        <thead><tr><th>Họ tên</th><th>Email</th><th>SĐT</th><th>Vai trò</th><th>Ngày tham gia</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var u in Model)
+            {
+                <tr>
+                    <td>@u.FullName</td>
+                    <td>@u.Email</td>
+                    <td>@u.PhoneNumber</td>
+                    <td>@string.Join(", ", roles != null && roles.ContainsKey(u.Id) ? roles[u.Id] : new List<string>())</td>
+                    <td>@u.CreatedDate.ToString("dd/MM/yyyy")</td>
+                    <td>@(u.IsActive ? Html.Raw("<span class='badge-status badge-active'>Hoạt động</span>") : Html.Raw("<span class='badge-status badge-inactive'>Đã khóa</span>"))</td>
+                    <td class="admin-actions">
+                        <a asp-action="Details" asp-route-id="@u.Id" class="btn-icon-edit"><i class="bi bi-eye"></i></a>
+                        <form asp-action="ToggleLock" asp-route-id="@u.Id" method="post">
+                            <button type="submit" class="btn-icon-delete" title="@(u.IsActive ? "Khóa tài khoản" : "Mở khóa")">
+                                <i class="bi @(u.IsActive ? "bi-lock" : "bi-unlock")"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

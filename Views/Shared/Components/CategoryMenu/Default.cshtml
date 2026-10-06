@@ -1,0 +1,12 @@
+@model List<Category>
+<ul class="cate-menu-list">
+    @foreach (var c in Model)
+    {
+        <li>
+            <a href="/danh-muc/@c.Slug">
+                <i class="bi @(c.IconClass ?? "bi-camera-video")"></i>
+                <span>@c.Name</span>
+            </a>
+        </li>
+    }
+</ul>

@@ -1,0 +1,85 @@
+@model List<Product>
+@{
+    ViewData["Title"] = "Quản lý sản phẩm";
+    var categories = ViewBag.Categories as List<Category> ?? new();
+    int currentPage = ViewBag.CurrentPage;
+    int totalPages = ViewBag.TotalPages;
+}
+<div class="admin-card">
+    <div class="admin-card-header">
+        <form class="admin-filter-form" method="get">
+            <input type="text" name="keyword" class="form-control" placeholder="Tìm theo tên hoặc SKU..." value="@ViewBag.Keyword" />
+            <select name="categoryId" class="form-select">
+                <option value="">Tất cả danh mục</option>
+                @foreach (var c in categories)
+                {
+                    <option value="@c.Id" selected="@(ViewBag.CategoryId == c.Id)">@c.Name</option>
+                }
+            </select>
+            <button type="submit" class="btn btn-outline-secondary">Lọc</button>
+        </form>
+        <a asp-action="Create" class="btn-admin-primary"><i class="bi bi-plus-lg"></i> Thêm sản phẩm</a>
+    </div>
+
+    <table class="admin-table">
+        <thead>
+            <tr><th>Hình</th><th>Tên sản phẩm</th><th>Danh mục</th><th>Giá</th><th>Tồn kho</th><th>Trạng thái</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Model)
+            {
+                <tr>
+                    <td><img src="@p.MainImageUrl" class="admin-thumb" /></td>
+                    <td>
+                        <strong>@p.Name</strong><br />
+                        <small class="text-muted">SKU: @p.SKU</small>
+                    </td>
+                    <td>@p.Category?.Name</td>
+                    <td>
+                        @SlugHelper.FormatVnd(p.FinalPrice)
+                        @if (p.DiscountPercent > 0)
+                        {
+                            <br />
+                            <small class="text-muted text-decoration-line-through">@SlugHelper.FormatVnd(p.Price)</small>
+                        }
+                    </td>
+                    <td>@(p.Stock <= 5 ? Html.Raw($"<span class='text-danger fw-bold'>{p.Stock}</span>") : Html.Raw(p.Stock.ToString()))</td>
+                    <td>
+                        @if (p.IsActive)
+                        {
+                            <span class="badge-status badge-active">Đang bán</span>
+                        }
+                        else
+                        {
+                            <span class="badge-status badge-inactive">Đã ẩn</span>
+                        }
+                        @if (p.IsFeatured)
+                        {
+                            <span class="badge-status badge-featured">Nổi bật</span>
+                        }
+                    </td>
+                    <td class="admin-actions">
+                        <a asp-action="Edit" asp-route-id="@p.Id" class="btn-icon-edit"><i class="bi bi-pencil"></i></a>
+                        <form asp-action="Delete" asp-route-id="@p.Id" method="post" onsubmit="return confirm('Xác nhận xóa/ẩn sản phẩm này?');">
+                            <button type="submit" class="btn-icon-delete"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (totalPages > 1)
+    {
+        <nav class="pagination-wrap">
+            <ul class="pagination">
+                @for (int i = 1; i <= totalPages; i++)
+                {
+                    <li class="page-item @(i == currentPage ? "active" : "")">
+                        <a class="page-link" href="@Url.Action("Index", new { page = i, keyword = ViewBag.Keyword, categoryId = ViewBag.CategoryId })">@i</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+</div>

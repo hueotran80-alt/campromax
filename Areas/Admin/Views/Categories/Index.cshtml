@@ -1,0 +1,29 @@
+@model List<Category>
+@{ ViewData["Title"] = "Quản lý danh mục"; }
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h5 class="mb-0">Danh sách danh mục (@Model.Count)</h5>
+        <a asp-action="Create" class="btn-admin-primary"><i class="bi bi-plus-lg"></i> Thêm danh mục</a>
+    </div>
+    <table class="admin-table">
+        <thead><tr><th>Hình</th><th>Tên danh mục</th><th>Số sản phẩm</th><th>Thứ tự</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var c in Model)
+            {
+                <tr>
+                    <td><img src="@c.ImageUrl" class="admin-thumb" /></td>
+                    <td><strong>@c.Name</strong><br /><small class="text-muted">/@c.Slug</small></td>
+                    <td>@c.Products.Count</td>
+                    <td>@c.DisplayOrder</td>
+                    <td>@(c.IsActive ? Html.Raw("<span class='badge-status badge-active'>Hoạt động</span>") : Html.Raw("<span class='badge-status badge-inactive'>Đã ẩn</span>"))</td>
+                    <td class="admin-actions">
+                        <a asp-action="Edit" asp-route-id="@c.Id" class="btn-icon-edit"><i class="bi bi-pencil"></i></a>
+                        <form asp-action="Delete" asp-route-id="@c.Id" method="post" onsubmit="return confirm('Xóa danh mục này?');">
+                            <button type="submit" class="btn-icon-delete"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

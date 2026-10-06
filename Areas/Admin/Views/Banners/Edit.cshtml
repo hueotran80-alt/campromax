@@ -1,0 +1,16 @@
+@model Banner
+@{ ViewData["Title"] = "Sửa banner"; }
+<div class="admin-card" style="max-width:700px;">
+    <form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+        <input type="hidden" asp-for="Id" />
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <div class="mb-3"><label class="form-label">Tiêu đề</label><input asp-for="Title" class="form-control" /></div>
+        <div class="mb-3"><label class="form-label">Mô tả phụ</label><input asp-for="SubTitle" class="form-control" /></div>
+        <div class="mb-3"><label class="form-label">Hình ảnh (URL)</label><input asp-for="ImageUrl" class="form-control" /></div>
+        <div class="mb-3"><label class="form-label">Liên kết</label><input asp-for="LinkUrl" class="form-control" /></div>
+        <div class="mb-3"><label class="form-label">Thứ tự</label><input asp-for="DisplayOrder" type="number" class="form-control" /></div>
+        <div class="form-check form-switch mb-3"><input asp-for="IsActive" class="form-check-input" role="switch" /><label asp-for="IsActive" class="form-check-label">Hiển thị</label></div>
+        <button type="submit" class="btn-admin-primary">Cập nhật</button>
+        <a asp-action="Index" class="btn-admin-outline">Hủy</a>
+    </form>
+</div>

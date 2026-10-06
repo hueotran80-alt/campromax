@@ -1,0 +1,50 @@
+@model Product
+<div class="product-card">
+    <a href="/san-pham/@Model.Slug" class="product-thumb">
+        @if (Model.DiscountPercent > 0)
+        {
+            <span class="badge-sale">-@Model.DiscountPercent%</span>
+        }
+        @if (Model.SoldCount > 30)
+        {
+            <span class="badge-hot"><i class="bi bi-fire"></i> Bán chạy</span>
+        }
+        <img src="@Model.MainImageUrl?v=20261006" alt="@Model.Name" loading="lazy" />
+        <button type="button" class="btn-wishlist" data-product-id="@Model.Id" title="Thêm vào yêu thích">
+            <i class="bi bi-heart"></i>
+        </button>
+    </a>
+    <div class="product-info">
+        <div class="product-brand">@(Model.Brand?.Name)</div>
+        <a href="/san-pham/@Model.Slug" class="product-name">@Model.Name</a>
+        <div class="product-rating">
+            @{ double avg = Model.AverageRating; }
+            @for (int i = 1; i <= 5; i++)
+            {
+                <i class="bi @(i <= Math.Round(avg) ? "bi-star-fill" : "bi-star")"></i>
+            }
+            <span class="rating-count">(@Model.ReviewCount)</span>
+        </div>
+        <div class="product-price-row">
+            <span class="price-final">@SlugHelper.FormatVnd(Model.FinalPrice)</span>
+            @if (Model.DiscountPercent > 0)
+            {
+                <span class="price-old">@SlugHelper.FormatVnd(Model.Price)</span>
+            }
+        </div>
+        <div class="product-stock-row">
+            @if (Model.Stock > 0)
+            {
+                <span class="text-success"><i class="bi bi-check-circle"></i> Còn hàng</span>
+            }
+            else
+            {
+                <span class="text-danger"><i class="bi bi-x-circle"></i> Hết hàng</span>
+            }
+            <span class="text-muted">Đã bán @Model.SoldCount</span>
+        </div>
+        <button type="button" class="btn-add-cart" data-product-id="@Model.Id" @(Model.Stock <= 0 ? "disabled" : "")>
+            <i class="bi bi-cart-plus"></i> @(Model.Stock <= 0 ? "Hết hàng" : "Thêm vào giỏ")
+        </button>
+    </div>
+</div>

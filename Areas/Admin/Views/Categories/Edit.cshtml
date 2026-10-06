@@ -1,0 +1,17 @@
+@model Category
+@{ ViewData["Title"] = "Sửa danh mục"; }
+<div class="admin-card" style="max-width:700px;">
+    <form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+        <input type="hidden" asp-for="Id" />
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <div class="mb-3"><label class="form-label">Tên danh mục</label><input asp-for="Name" class="form-control" /><span asp-validation-for="Name" class="text-danger"></span></div>
+        <div class="mb-3"><label class="form-label">Icon (Bootstrap Icons class)</label><input asp-for="IconClass" class="form-control" /></div>
+        <div class="mb-3"><label class="form-label">Hình ảnh (URL)</label><input asp-for="ImageUrl" class="form-control" /></div>
+        <div class="mb-3"><label class="form-label">Mô tả</label><textarea asp-for="Description" class="form-control" rows="3"></textarea></div>
+        <div class="mb-3"><label class="form-label">Thứ tự hiển thị</label><input asp-for="DisplayOrder" type="number" class="form-control" /></div>
+        <div class="form-check form-switch mb-3"><input asp-for="IsActive" class="form-check-input" role="switch" /><label asp-for="IsActive" class="form-check-label">Hoạt động</label></div>
+        <button type="submit" class="btn-admin-primary">Cập nhật</button>
+        <a asp-action="Index" class="btn-admin-outline">Hủy</a>
+    </form>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

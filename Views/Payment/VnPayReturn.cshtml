@@ -1,0 +1,22 @@
+@{
+    ViewData["Title"] = "Kết quả thanh toán VNPay";
+    bool success = ViewBag.Success ?? false;
+}
+<div class="container py-5">
+    <div class="order-success-box @(success ? "" : "order-fail-box")">
+        <i class="bi @(success ? "bi-check-circle-fill" : "bi-x-circle-fill")"></i>
+        <h2>@(success ? "Thanh toán VNPay thành công!" : "Thanh toán không thành công")</h2>
+        <p>@ViewBag.Message</p>
+        @if (ViewBag.OrderCode != null)
+        {
+            <h4 class="order-code">@ViewBag.OrderCode</h4>
+        }
+        <div class="order-success-actions">
+            @if (success && ViewBag.OrderCode != null)
+            {
+                <a asp-controller="Order" asp-action="History" class="btn-primary-lg">Xem đơn hàng của tôi</a>
+            }
+            <a href="/san-pham" class="btn-outline-lg">Tiếp tục mua sắm</a>
+        </div>
+    </div>
+</div>

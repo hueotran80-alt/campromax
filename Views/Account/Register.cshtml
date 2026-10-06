@@ -1,0 +1,40 @@
+@model RegisterViewModel
+@{
+    ViewData["Title"] = "Đăng ký";
+    Layout = "_AuthLayout";
+}
+<div class="auth-card">
+    <h3>Tạo tài khoản mới</h3>
+    <p class="text-muted">Đăng ký để mua sắm và theo dõi đơn hàng dễ dàng hơn.</p>
+    <form asp-action="Register" method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <div class="mb-3">
+            <label class="form-label">Họ và tên</label>
+            <input asp-for="FullName" class="form-control" placeholder="Nhập họ và tên" />
+            <span asp-validation-for="FullName" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input asp-for="Email" class="form-control" placeholder="Nhập email" />
+            <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Số điện thoại</label>
+            <input asp-for="PhoneNumber" class="form-control" placeholder="Nhập số điện thoại" />
+            <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Mật khẩu</label>
+            <input asp-for="Password" type="password" class="form-control" placeholder="Tối thiểu 6 ký tự" />
+            <span asp-validation-for="Password" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Xác nhận mật khẩu</label>
+            <input asp-for="ConfirmPassword" type="password" class="form-control" placeholder="Nhập lại mật khẩu" />
+            <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+        </div>
+        <button type="submit" class="btn-primary-lg w-100">Đăng ký</button>
+    </form>
+    <p class="auth-switch">Đã có tài khoản? <a asp-action="Login">Đăng nhập</a></p>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

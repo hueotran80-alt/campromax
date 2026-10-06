@@ -1,0 +1,212 @@
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@{
+    var storeName = "CamPro Security";
+}
+@functions {
+    string GetAntiXsrfRequestToken() => Antiforgery.GetAndStoreTokens(Context).RequestToken ?? string.Empty;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - @storeName</title>
+    <meta name="description" content="@storeName - Chuyên camera giám sát an ninh chính hãng: Hikvision, Dahua, KBVision, Imou, EZVIZ. Bảo hành 24 tháng, lắp đặt tận nơi." />
+    <meta name="csrf-token" content="@GetAntiXsrfRequestToken()" />
+
+    <link rel="icon" type="image/png" href="~/images/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+
+    <!-- Top bar -->
+    <div class="top-bar d-none d-md-block">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="top-bar-left">
+                <span><i class="bi bi-telephone-fill"></i> Hotline: 0987 654 321</span>
+                <span><i class="bi bi-envelope-fill"></i> camprosecurity@hunre.edu.vn</span>
+            </div>
+            <div class="top-bar-right">
+                <a asp-controller="Order" asp-action="History"><i class="bi bi-truck"></i> Tra cứu đơn hàng</a>
+                <a asp-controller="News" asp-action="Index"><i class="bi bi-newspaper"></i> Tin tức</a>
+                <a asp-controller="Home" asp-action="About"><i class="bi bi-info-circle"></i> Giới thiệu</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main header -->
+    <header class="main-header">
+        <div class="container">
+            <div class="header-row">
+                <a href="/" class="logo">
+                    <i class="bi bi-camera-video-fill"></i>
+                    <div class="logo-text">
+                        <span class="logo-title">CamPro<span class="text-accent">Security</span></span>
+                        <span class="logo-sub">Camera giám sát chính hãng</span>
+                    </div>
+                </a>
+
+                <div class="header-search">
+                    <form asp-controller="Product" asp-action="Index" method="get" autocomplete="off">
+                        <input type="text" name="keyword" id="searchInput" placeholder="Tìm camera, đầu ghi, thương hiệu..." value="@Context.Request.Query["keyword"]" />
+                        <button type="submit"><i class="bi bi-search"></i></button>
+                    </form>
+                    <div id="searchSuggestBox" class="search-suggest-box"></div>
+                </div>
+
+                <div class="header-actions">
+                    <a asp-controller="Wishlist" asp-action="Index" class="header-action-item d-none d-lg-flex">
+                        <i class="bi bi-heart"></i>
+                        <span>Yêu thích</span>
+                    </a>
+                    <a asp-controller="Cart" asp-action="Index" class="header-action-item cart-icon-wrap">
+                        <i class="bi bi-cart3"></i>
+                        <span class="cart-badge" id="cartBadge">0</span>
+                        <span>Giỏ hàng</span>
+                    </a>
+
+                    @if (SignInManager.IsSignedIn(User))
+                    {
+                        var currentUser = await UserManager.GetUserAsync(User);
+                        var isAdmin = currentUser != null && await UserManager.IsInRoleAsync(currentUser, "Admin");
+                        <div class="header-action-item dropdown">
+                            <a href="#" class="dropdown-toggle" data-bs-toggle="dropdown">
+                                <i class="bi bi-person-circle"></i>
+                                <span>@(currentUser?.FullName ?? "Tài khoản")</span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                @if (isAdmin)
+                                {
+                                    <li><a class="dropdown-item" href="/Admin/Dashboard"><i class="bi bi-speedometer2 me-2"></i>Trang quản trị</a></li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                }
+                                <li><a class="dropdown-item" asp-controller="Account" asp-action="Profile"><i class="bi bi-person me-2"></i>Hồ sơ của tôi</a></li>
+                                <li><a class="dropdown-item" asp-controller="Order" asp-action="History"><i class="bi bi-bag-check me-2"></i>Đơn hàng của tôi</a></li>
+                                <li><a class="dropdown-item" asp-controller="Wishlist" asp-action="Index"><i class="bi bi-heart me-2"></i>Sản phẩm yêu thích</a></li>
+                                <li><a class="dropdown-item" asp-controller="Account" asp-action="ChangePassword"><i class="bi bi-shield-lock me-2"></i>Đổi mật khẩu</a></li>
+                                <li><hr class="dropdown-divider" /></li>
+                                <li>
+                                    <form asp-controller="Account" asp-action="Logout" method="post">
+                                        <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right me-2"></i>Đăng xuất</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    }
+                    else
+                    {
+                        <a asp-controller="Account" asp-action="Login" class="header-action-item">
+                            <i class="bi bi-person"></i>
+                            <span>Đăng nhập</span>
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Category nav -->
+    <nav class="category-nav">
+        <div class="container">
+            <div class="cate-nav-inner">
+                <div class="cate-dropdown">
+                    <button class="cate-dropdown-btn"><i class="bi bi-list"></i> Danh mục sản phẩm</button>
+                    <div class="cate-dropdown-panel">
+                        @await Component.InvokeAsync("CategoryMenu")
+                    </div>
+                </div>
+                <ul class="cate-nav-links">
+                    <li><a asp-controller="Home" asp-action="Index">Trang chủ</a></li>
+                    <li><a asp-controller="Product" asp-action="Index">Tất cả sản phẩm</a></li>
+                    <li><a asp-controller="Product" asp-action="Index" asp-route-sortBy="best-selling">Bán chạy</a></li>
+                    <li><a asp-controller="News" asp-action="Index">Tin tức</a></li>
+                    <li><a asp-controller="Home" asp-action="About">Giới thiệu</a></li>
+                    <li><a asp-controller="Home" asp-action="Contact">Liên hệ</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    @{
+        var successMsg = TempData["Success"] as string;
+        var errorMsg = TempData["Error"] as string;
+    }
+    @if (!string.IsNullOrEmpty(successMsg))
+    {
+        <div class="container mt-3"><div class="alert alert-success alert-dismissible fade show" role="alert">@successMsg<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div></div>
+    }
+    @if (!string.IsNullOrEmpty(errorMsg))
+    {
+        <div class="container mt-3"><div class="alert alert-danger alert-dismissible fade show" role="alert">@errorMsg<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div></div>
+    }
+
+    <main>
+        @RenderBody()
+    </main>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <div class="footer-logo"><i class="bi bi-camera-video-fill"></i> CamPro<span class="text-accent">Security</span></div>
+                    <p>Chuyên cung cấp camera giám sát chính hãng: Hikvision, Dahua, KBVision, Imou, EZVIZ. Tư vấn - lắp đặt - bảo hành trọn gói.</p>
+                    <p><i class="bi bi-geo-alt-fill"></i> 41A Phú Diễn, Bắc Từ Liêm, Hà Nội</p>
+                    <p><i class="bi bi-telephone-fill"></i> 0987 654 321</p>
+                    <p><i class="bi bi-envelope-fill"></i> camprosecurity@hunre.edu.vn</p>
+                </div>
+                <div class="footer-col">
+                    <h5>Danh mục</h5>
+                    <ul>
+                        <li><a href="/danh-muc/camera-wifi-trong-nha">Camera Wifi trong nhà</a></li>
+                        <li><a href="/danh-muc/camera-wifi-ngoai-troi">Camera Wifi ngoài trời</a></li>
+                        <li><a href="/danh-muc/camera-ip-poe">Camera IP PoE</a></li>
+                        <li><a href="/danh-muc/dau-ghi-hinh">Đầu ghi hình NVR/DVR</a></li>
+                        <li><a href="/danh-muc/phu-kien-camera">Phụ kiện camera</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h5>Chính sách</h5>
+                    <ul>
+                        <li><a asp-controller="Home" asp-action="Policy">Chính sách bảo hành</a></li>
+                        <li><a asp-controller="Home" asp-action="Policy">Chính sách đổi trả</a></li>
+                        <li><a asp-controller="Home" asp-action="Policy">Chính sách vận chuyển</a></li>
+                        <li><a asp-controller="Home" asp-action="Policy">Chính sách bảo mật</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h5>Hỗ trợ khách hàng</h5>
+                    <ul>
+                        <li><a asp-controller="Home" asp-action="Contact">Liên hệ</a></li>
+                        <li><a asp-controller="Order" asp-action="History">Tra cứu đơn hàng</a></li>
+                        <li><a asp-controller="News" asp-action="Index">Tin tức - Kiến thức</a></li>
+                        <li><a asp-controller="Account" asp-action="Register">Đăng ký tài khoản</a></li>
+                    </ul>
+                    <div class="payment-icons">
+                        <span class="pay-badge"><i class="bi bi-cash-coin"></i> COD</span>
+                        <span class="pay-badge"><i class="bi bi-credit-card"></i> VNPay</span>
+                        <span class="pay-badge"><i class="bi bi-wallet2"></i> MoMo</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="container">
+                <p>&copy; @DateTime.Now.Year CamPro Security — Đồ án bài tập lớn môn Kiểm thử phần mềm.</p>
+                <p>Đồ án nhóm sinh viên — Trường Đại học Tài nguyên và Môi trường Hà Nội (HUNRE)</p>
+            </div>
+        </div>
+    </footer>
+
+    <a href="#" id="backToTop" class="back-to-top"><i class="bi bi-arrow-up"></i></a>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

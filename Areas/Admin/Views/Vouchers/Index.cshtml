@@ -1,0 +1,30 @@
+@model List<Voucher>
+@{ ViewData["Title"] = "Quản lý voucher"; }
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h5 class="mb-0">Danh sách voucher (@Model.Count)</h5>
+        <a asp-action="Create" class="btn-admin-primary"><i class="bi bi-plus-lg"></i> Thêm voucher</a>
+    </div>
+    <table class="admin-table">
+        <thead><tr><th>Mã</th><th>Loại giảm</th><th>Điều kiện</th><th>Hiệu lực</th><th>Đã dùng</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var v in Model)
+            {
+                <tr>
+                    <td><strong>@v.Code</strong><br /><small class="text-muted">@v.Description</small></td>
+                    <td>@(v.Type == DiscountType.Percent ? $"{v.Value}%" : SlugHelper.FormatVnd(v.Value))</td>
+                    <td>Đơn từ @SlugHelper.FormatVnd(v.MinOrderAmount)</td>
+                    <td>@v.StartDate.ToString("dd/MM/yyyy") - @v.EndDate.ToString("dd/MM/yyyy")</td>
+                    <td>@v.UsedCount@(v.UsageLimit.HasValue ? $"/{v.UsageLimit}" : "")</td>
+                    <td>@(v.IsActive && v.EndDate >= DateTime.Now ? Html.Raw("<span class='badge-status badge-active'>Hoạt động</span>") : Html.Raw("<span class='badge-status badge-inactive'>Hết hạn/Ẩn</span>"))</td>
+                    <td class="admin-actions">
+                        <a asp-action="Edit" asp-route-id="@v.Id" class="btn-icon-edit"><i class="bi bi-pencil"></i></a>
+                        <form asp-action="Delete" asp-route-id="@v.Id" method="post" onsubmit="return confirm('Xóa voucher này?');">
+                            <button type="submit" class="btn-icon-delete"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
