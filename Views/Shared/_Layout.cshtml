@@ -1,6 +1,6 @@
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
-    var storeName = "CamPro Security";
+    var storeName = "Nhóm 8 - CamPro";
 }
 @functions {
     string GetAntiXsrfRequestToken() => Antiforgery.GetAndStoreTokens(Context).RequestToken ?? string.Empty;
@@ -46,7 +46,7 @@
                 <a href="/" class="logo">
                     <i class="bi bi-camera-video-fill"></i>
                     <div class="logo-text">
-                        <span class="logo-title">CamPro<span class="text-accent">Security</span></span>
+                        <span class="logo-title">Nhóm 8 - <span class="text-accent">CamPro</span></span>
                         <span class="logo-sub">Camera giám sát chính hãng</span>
                     </div>
                 </a>
@@ -154,7 +154,7 @@
         <div class="container">
             <div class="footer-grid">
                 <div class="footer-col">
-                    <div class="footer-logo"><i class="bi bi-camera-video-fill"></i> CamPro<span class="text-accent">Security</span></div>
+                    <div class="footer-logo"><i class="bi bi-camera-video-fill"></i> Nhóm 8 - <span class="text-accent">CamPro</span></div>
                     <p>Chuyên cung cấp camera giám sát chính hãng: Hikvision, Dahua, KBVision, Imou, EZVIZ. Tư vấn - lắp đặt - bảo hành trọn gói.</p>
                     <p><i class="bi bi-geo-alt-fill"></i> 41A Phú Diễn, Bắc Từ Liêm, Hà Nội</p>
                     <p><i class="bi bi-telephone-fill"></i> 0987 654 321</p>
@@ -197,7 +197,7 @@
         </div>
         <div class="footer-bottom">
             <div class="container">
-                <p>&copy; @DateTime.Now.Year CamPro Security — Đồ án bài tập lớn môn Kiểm thử phần mềm.</p>
+                <p>&copy; @DateTime.Now.Year Nhóm 8 - CamPro — Đồ án bài tập lớn môn Kiểm thử phần mềm.</p>
                 <p>Đồ án nhóm sinh viên — Trường Đại học Tài nguyên và Môi trường Hà Nội (HUNRE)</p>
             </div>
         </div>
