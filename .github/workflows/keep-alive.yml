@@ -2,9 +2,14 @@ name: Keep Render Service Alive
 
 on:
   schedule:
-    # Run every 14 minutes to reduce the chance of Render free-tier spin-down.
-    - cron: "*/14 * * * *"
+    # Ping every 5 minutes to reduce the chance of Render Free spinning down.
+    - cron: "*/5 * * * *"
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/keep-alive.yml"
 
 permissions:
   contents: read
