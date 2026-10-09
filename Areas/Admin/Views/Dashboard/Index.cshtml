@@ -54,7 +54,10 @@
                     @foreach (var p in Model.TopSellingProducts)
                     {
                         <tr>
-                            <td class="cart-product-cell"><img src="@p.ImageUrl" /> <span>@p.Name</span></td>
+                            <td class="cart-product-cell">
+                                <img src="@p.ImageUrl" alt="@p.Name" style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px; margin-right: 8px; vertical-align: middle;" /> 
+                                <span>@p.Name</span>
+                            </td>
                             <td>@p.SoldCount</td>
                             <td>@SlugHelper.FormatVnd(p.Revenue)</td>
                         </tr>
