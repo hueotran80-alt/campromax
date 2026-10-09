@@ -2,8 +2,8 @@ name: Keep Render Service Alive
 
 on:
   schedule:
-    # Ping every 5 minutes to reduce the chance of Render Free spinning down.
-    - cron: "*/5 * * * *"
+    # Requested one-minute interval; GitHub may not schedule more frequently than every 5 minutes.
+    - cron: "* * * * *"
   workflow_dispatch:
   push:
     branches:
