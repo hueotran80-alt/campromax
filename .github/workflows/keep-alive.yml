@@ -1,0 +1,33 @@
+name: Keep Render Service Alive
+
+on:
+  schedule:
+    # Run every 14 minutes to reduce the chance of Render free-tier spin-down.
+    - cron: "*/14 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keep-render-alive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping Campromax on Render
+        run: |
+          set -eu
+          URL="https://campromax.onrender.com/"
+          echo "Pinging $URL"
+          curl --fail --silent --show-error \
+            --location \
+            --max-time 50 \
+            --retry 2 \
+            --retry-delay 5 \
+            --output /dev/null \
+            --write-out "HTTP status: %{http_code}\n" \
+            "$URL"
