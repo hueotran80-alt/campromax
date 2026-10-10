@@ -3,7 +3,7 @@ name: Keep Render Service Alive
 on:
   schedule:
     # Requested one-minute interval; GitHub may not schedule more frequently than every 5 minutes.
-    - cron: "* * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
   push:
     branches:
